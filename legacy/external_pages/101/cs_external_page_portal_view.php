@@ -852,40 +852,7 @@ class cs_external_page_portal_view extends cs_page_view {
 
 
       // add-ons
-      if ( $item->showHomepageDescLink() or
-            ( $item->showWikiLink()
-              and $item->existWiki()
-              and $item->issetWikiPortalLink()
-            )
-         ) {
-         $html .= '<span style="font-weight:bold;">'.$this->_translator->getMessage('COMMON_PORTAL_LINKS').':</span>'.LF;
-         $html .= '<ul style="margin-left:0px;margin-top:0em; margin-bottom:0.5em; padding-top:0px;padding-left:1em;">'.LF;
 
-         if (
-               ( $item->showWikiLink()
-                 and $item->existWiki()
-                 and $item->issetWikiPortalLink()
-               )
-            ) {
-            $html .= '<li style="font-weight:normal; font-size:8pt;">'.LF;
-            global $c_pmwiki_path_url;
-            $html .= '<span style="white-space:nowrap;"> <a href="'.$c_pmwiki_path_url.'/wikis/'.$item->getContextID().'/'.$item->getItemID().'" target="_blank">'.$item->getWikiTitle().'</a> ('.$this->_translator->getMessage('COMMON_WIKI_LINK').')</span>';
-            $html .= '</li>'.LF;
-         }
-
-         if ( $item->showHomepageDescLink() ) {
-            $html .= '<li style="font-weight:normal; font-size:8pt;">'.LF;
-            $link = ahref_curl( $item->getitemID(),
-                                'context',
-                                'forward',
-                                array('tool' => 'homepage'),
-                                $this->_translator->getMessage('HOMEPAGE_HOMEPAGE'),'','_blank');
-            $html .= '<span style="white-space:nowrap;"> '.$link.'</span>';
-            $html .= '</li>'.LF;
-         }
-
-         $html .= '</ul>'.LF;
-      }
       return $html;
    }
 
@@ -2579,6 +2546,11 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
    color:#000 !important;
 }
 
+.commsyBar {
+    height: 40px;
+    background-color: #ffffff;
+}
+
 .commsyBar a {
     display: block;
     box-sizing: border-box;
@@ -2590,8 +2562,8 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
     font-size: 14px;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-weight: normal;
-    color: #D8261D !important;
-    text-decoration: underline;
+    color: #6491B1 !important;
+    text-decoration: none;
 }
 
 /*
@@ -2616,6 +2588,20 @@ Responsive
         width: 100%;
         float: none;
         clear: both;
+    }
+    
+    #footer {
+        width: 100%;
+    }
+    
+    #partner_area ul {
+        width: 100%;
+    }
+    
+    #partner_area li {
+        float: none;
+        clear: both;
+        width: 100%;
     }
 }
        
@@ -3044,7 +3030,7 @@ Responsive
    function _getUserPersonalAreaAsHTML () {
       $retour  = '';
       $retour .= '   <form style="margin:0px; padding:0px;" method="post" action="'.curl($this->_environment->getCurrentContextID(),'room','change','').'" name="room_change">'.LF;
-      $retour .= '         <select size="1" style="font-size:10pt; width:210px; height:25px;" name="room_id" onChange="javascript:document.room_change.submit()">'.LF;
+      $retour .= '         <select size="1" style="font-size:10pt; width:190px; height:25px;" name="room_id" onChange="javascript:document.room_change.submit()">'.LF;
       $context_array = array();
       $context_array = $this->_getAllOpenContextsForCurrentUser();
       $current_portal = $this->_environment->getCurrentPortalItem();
@@ -4561,9 +4547,11 @@ Responsive
            $html .= '
        
         <div class="commsyBar">
-            <div style="float:right; margin-top:-38px;">
-            
-                <i class="uk-icon-qrcode"></i><a href="/dashboard/'.$current_user->getOwnRoom()->getItemId().'">Willkommen, '.$current_user->getFullName().'! Hier geht es zum Dashboard</a>
+            <div style="float:left;">
+                <a href="/room/'.$current_user->getOwnRoom()->getItemId().'/all">Alle Räume</a>
+            </div>
+            <div style="float:right;">
+                <a href="/dashboard/'.$current_user->getOwnRoom()->getItemId().'">Willkommen, '.$current_user->getFullName().'</a>
             </div>
         </div>
        
