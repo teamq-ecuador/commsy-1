@@ -1772,7 +1772,7 @@ class cs_external_page_portal_view extends cs_page_view {
       /* CommSy Bar */
       $currentUser = $this->_environment->getCurrentUserItem();
       if ($this->_environment->InPortal() && !$currentUser->isGuest()) {
-      	$retour .= $this->_includeDojoAsHTML();
+      	//$retour .= $this->_includeDojoAsHTML();
       }
       
       $current_browser = mb_strtolower($this->_environment->getCurrentBrowser(), 'UTF-8');
@@ -2005,34 +2005,7 @@ $auth_source_manager = $this->_environment->getAuthSourceManager();
        $retour .= ' <style media="screen" type="text/css">';
        $retour .= '
        
-       <?php
-// $Id$
-//
-// Release $Name$
-//
-// Copyright (c)2002-2003 Matthias Finck, Dirk Fust, Oliver Hankel, Iver Jackewitz, Michael Janneck,
-// Martti Jeenicke, Detlev Krause, Irina L. Marinescu, Timo Nolte, Bernd Pape,
-// Edouard Simon, Monique Strauss, Jos� Manuel Gonz�lez V�zquez
-//
-//    This file is part of CommSy.
-//
-//    CommSy is free software; you can redistribute it and/or modify
-//    it under the terms of the GNU General Public License as published by
-//    the Free Software Foundation; either version 2 of the License, or
-//    (at your option) any later version.
-//
-//    CommSy is distributed in the hope that it will be useful,
-//    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//    GNU General Public License for more details.
-//
-//    You have received a copy of the GNU General Public License
-//    along with CommSy.
-
-header("Content-type: text/css");
-// load required classes
-?>
-
+       
 
 
 /* 
@@ -2492,7 +2465,7 @@ span.key{
    padding:3px 10px;
    margin:0px 0px 0px 0px;
    background-color: #EEEEEE;
-   border-bottom:1px solid <?php #echo($color[\'tabs_background\'])?>;
+   border-bottom:1px solid ;
 }
 
 #profile_tablist{
@@ -2502,22 +2475,22 @@ span.key{
 }
 
 .profile_tab{
-    border-right:1px solid <?php #echo($color[\'tabs_background\'])?>;
+    border-right:1px solid ;
     padding:3px 10px;
     display:inline;
 }
 
 .profile_tab_current{
-    border-right:1px solid <?php #echo($color[\'tabs_background\'])?>;
+    border-right:1px solid ;
     padding:3px 10px;
     display:inline;
     font-weight:bold;
 }
 
 #profile_title, .profile_title{
-   background:url(images/detail_fader_<?php #echo($color[\'schema\'])?>.gif) center repeat-x;
-   background-color:<?php #echo($color[\'tabs_background\'])?>;
-   color:<?php #echo($color[\'headline_text\'])?>;
+   background:url(images/detail_fader_.gif) center repeat-x;
+   background-color:;
+   color:;
    vertical-align:top;
    margin:0px;
    padding:5px 10px;
@@ -2528,11 +2501,11 @@ span.key{
    margin-bottom:20px;
    padding:0px
    background-color: #FFFFFF;
-   border: 2px solid <?php #echo($color[\'tabs_background\'])?>;
+   border: 2px solid ;
 }
 
 a.titlelink{
-   color:<?php #echo($color[\'headline_text\'])?>;
+   color:;
 }
 
 #iSM {
@@ -2603,6 +2576,30 @@ div.weak #iWeak {
 
 div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
    color:#000 !important;
+}
+
+/*
+----------------------------------------------------------------------
+Responsive
+----------------------------------------------------------------------
+*/
+
+@media only screen and (max-width: 960px) {
+    #wrapper {
+        width: 80%;
+    }
+
+    .column_01 {
+        width: 100%;
+        float: none;
+        clear: both;
+    }
+
+    .column_02 {
+        width: 100%;
+        float: none;
+        clear: both;
+    }
 }
        
        ';
@@ -4540,8 +4537,8 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
     $html .= '<body class="tundra">'.LF;
     
     /* CommSy Bar */
-    $html .= $this->_getCommSyBarBeforeContentAsHTML();
-    
+    //$html .= $this->_getCommSyBarBeforeContentAsHTML();
+
     // determe active link
     $serverName = $_SERVER['SERVER_NAME'];
     $serverNameExplode = explode('.', $serverName);
@@ -4560,7 +4557,7 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
     		}
     	}
     }
-    
+
     $html .= '<div id="wrapper">'.LF;
     $html .= '    <div id="header" style="padding-top: 0px;">'.LF;
     $html .= '        <a href="//sh.schulcommsy.de" title="SchulCommSy Startseite"><img src="css/external_portal_styles/'.$current_context->getItemID().'/img/portal_logo.gif" alt="SchulCommSy" /></a>'.LF;
@@ -4581,8 +4578,8 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
     $html .= '    <div id="claim">'.LF;
     $html .= '        SchulCommSy Schleswig-Holstein'.LF;
     $html .= '    </div>'.LF;
-        
- 
+
+
 
 # rechte Box, die zu füllen ist.
     if ( !(isset($this->_agb_view) or
@@ -4691,7 +4688,7 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
       #$html .= '                     </div>'.LF;
       $html .= '         </div>'.LF;
 # /Hauptbereich
-    
+
     if ( !(isset($this->_agb_view) or
           ($cs_room_id and $cs_module == 'configuration') or
           ($cs_module == 'mail' and $this->_environment->getCurrentFunction() == 'to_moderator') or
@@ -4703,25 +4700,25 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
                ) or
           ( $cs_module == 'language' ))
     ) {
-       
+
     $html .= '</div>';
     $html .= '</div>';
-    
+
     $html .= '<div class="column_01">';
     $html .= '         <div id="sidebar-mapper" >'.LF;
     $html .= '            <div id="sidebar" >'.LF;
     $html .= '<div id="portal_search">'.LF;
-    
-    
+
+
     $html .= $this->getMyAreaAsHTML(str_replace('commsy_session_id='.$sid.'&','',$wiki_url));
-    
+
     $html .= '</div>'.LF;
     $html .= '</div>'.LF;
     $html .= '<div id="portal_search">'.LF;
-    
+
     #$html .='<div class="sidehead">Raumsuche</div>'.LF;
     $html .= $this->getSearchBoxAsHTML().LF;
-    
+
     $current_user = $this->_environment->getCurrentUser();
     if ($current_user->isUser()){
        $html .= '<div id="portal_action" style="margin-top:15px; padding:0px; margin-left:0px margin-right:0px;">'.LF;
