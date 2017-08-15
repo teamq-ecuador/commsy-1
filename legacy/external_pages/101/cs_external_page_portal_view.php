@@ -2060,7 +2060,8 @@ header + image rotator
     clear: both;
     }	
 
-#wrapper {
+#wrapper,
+.commsyBar {
     width: 980px;
     margin: 0px auto;
     text-align: left;
@@ -2578,6 +2579,21 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
    color:#000 !important;
 }
 
+.commsyBar a {
+    display: block;
+    box-sizing: border-box;
+    text-decoration: none;
+    height: 50px;
+    padding: 0 15px;
+    line-height: 50px;
+    color: #444;
+    font-size: 14px;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: normal;
+    color: #D8261D !important;
+    text-decoration: underline;
+}
+
 /*
 ----------------------------------------------------------------------
 Responsive
@@ -2585,7 +2601,8 @@ Responsive
 */
 
 @media only screen and (max-width: 960px) {
-    #wrapper {
+    #wrapper,
+    .commsyBar {
         width: 80%;
     }
 
@@ -4538,6 +4555,21 @@ Responsive
     
     /* CommSy Bar */
     //$html .= $this->_getCommSyBarBeforeContentAsHTML();
+
+       if ($current_user && $current_user->getUserId() != 'guest' && !$current_user->isRoot()) {
+
+           $html .= '
+       
+        <div class="commsyBar">
+            <div style="float:right; margin-top:-38px;">
+            
+                <i class="uk-icon-qrcode"></i><a href="/dashboard/'.$current_user->getOwnRoom()->getItemId().'">Willkommen, '.$current_user->getFullName().'! Hier geht es zum Dashboard</a>
+            </div>
+        </div>
+       
+       ';
+
+       }
 
     // determe active link
     $serverName = $_SERVER['SERVER_NAME'];
