@@ -576,163 +576,225 @@ class cs_external_page_portal_view extends cs_page_view {
     *
     * param cs_project_item project room item
     */
-   function _getRoomAccessAsHTML ($item, $mode = 'none') {
-      $current_user = $this->_environment->getCurrentUserItem();
-      $may_enter = $item->mayEnter($current_user);
-      $html ='';
-      //Projektraum User
-      $user_manager = $this->_environment->getUserManager();
-      $user_manager->setUserIDLimit($current_user->getUserID());
-      $user_manager->setAuthSourceLimit($current_user->getAuthSource());
-      $user_manager->setContextLimit($item->getItemID());
-      $user_manager->select();
-      $user_list = $user_manager->get();
-      if (!empty($user_list)) {
-         $room_user = $user_list->getFirst();
-      } else {
-         $room_user = '';
-      }
-
-      // archive
-      if ( $may_enter
-           and empty($room_user)
-           and $item->isClosed()
-           and !$this->_environment->isArchiveMode()
-         ) {
-         $user_manager = $this->_environment->getZzzUserManager();
-         $user_manager->setUserIDLimit($current_user->getUserID());
-         $user_manager->setAuthSourceLimit($current_user->getAuthSource());
-         $user_manager->setContextLimit($item->getItemID());
-         $user_manager->select();
-         $user_list = $user_manager->get();
-         if (!empty($user_list)) {
+    function _getRoomAccessAsHTML ($item, $mode = 'none') {
+        $current_user = $this->_environment->getCurrentUserItem();
+        $may_enter = $item->mayEnter($current_user);
+        $html ='';
+        //Projektraum User
+        $user_manager = $this->_environment->getUserManager();
+        $user_manager->setUserIDLimit($current_user->getUserID());
+        $user_manager->setAuthSourceLimit($current_user->getAuthSource());
+        $user_manager->setContextLimit($item->getItemID());
+        $user_manager->select();
+        $user_list = $user_manager->get();
+        if (!empty($user_list)) {
             $room_user = $user_list->getFirst();
-         } else {
+        } else {
             $room_user = '';
-         }
-         unset($user_list);
-      }
-      
-      $current_user = $this->_environment->getCurrentUserItem();
+        }
 
-      //Anzeige außerhalb des Anmeldeprozesses
-      if ($mode !='member' and $mode !='info' and $mode !='email'){
-         $current_user = $this->_environment->getCurrentUserItem();
-         $may_enter = $item->mayEnter($current_user);
-         // Eintritt erlaubt
-         if ( $may_enter and ( ( !empty($room_user) and $room_user->isUser() ) or $current_user->isRoot() ) ) {
-            $actionCurl = curl( $item->getItemID(),
-                             'home',
-                             'index',
-                             '');
-            $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open" /></a>'.BRLF;
-            $actionCurl = curl( $item->getItemID(),
-                             'home',
-                             'index',
-                             '');
-         $html .= '<div style="padding-top:8px; font-size:8pt;">&nbsp;</div>'.BRLF;
-         //als Gast Zutritt erlaubt, aber kein Mitglied
-         } elseif ( $item->isLocked() ) {
-            $html .= '<img src="images/door_closed_large.gif" alt="door closed" />'.LF;
-         } elseif ( $item->isOpenForGuests()
-                    and empty($room_user)
-                  ) {
-            $actionCurl = curl( $item->getItemID(),
-                             'home',
-                             'index',
-                             '');
-            $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open" /></a>'.BRLF;
-            $actionCurl = curl( $item->getItemID(),
-                             'home',
-                             'index',
-                             '');
-            $html .= '<div style="padding-top:5px;">'.'> <a href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_ENTER_AS_GUEST').'</a></div>'.LF;
-            if ($item->isOpen()) {
-               $params = array();
-               $params = $this->_environment->getCurrentParameterArray();
-               $params['account'] = 'member';
-               $params['room_id'] = $item->getItemID();
-               $actionCurl = curl( $this->_environment->getCurrentContextID(),
-                                  'home',
-                                  'index',
-                                  $params,
-                                  '');
-               $html .= '<div style="padding-top:3px; font-size:8pt;">'.'> <a style="display:inline;" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_JOIN').'</a></div>'.LF;
-              unset($params);
-           } else {
-              $html .= '<div style="padding-top:3px; font-size:8pt;"><span class="disabled">'.$this->_translator->getMessage('CONTEXT_JOIN').'</span></div>'.LF;
-           }
-
-         //Um Erlaubnis gefragt
-         } elseif ( !empty($room_user) and $room_user->isRequested() ) {
-            if ( $item->isOpenForGuests() ) {
-               $actionCurl = curl( $item->getItemID(),
-                                   'home',
-                                   'index',
-                                   '');
-               $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open" /></a>'.BRLF;
-               $actionCurl = curl( $item->getItemID(),
-                                   'home',
-                                   'index',
-                                   '');
-               $html .= '<div style="padding-top:7px; text-align: center; font-size:8pt;">'.'> <a  style="display:inline; font-size:8pt;" class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_ENTER_AS_GUEST').'</a></div>'.LF;
+        // archive
+        if ( $may_enter
+            and empty($room_user)
+            and $item->isClosed()
+            and !$this->_environment->isArchiveMode()
+        ) {
+            $user_manager = $this->_environment->getZzzUserManager();
+            $user_manager->setUserIDLimit($current_user->getUserID());
+            $user_manager->setAuthSourceLimit($current_user->getAuthSource());
+            $user_manager->setContextLimit($item->getItemID());
+            $user_manager->select();
+            $user_list = $user_manager->get();
+            if (!empty($user_list)) {
+                $room_user = $user_list->getFirst();
             } else {
-               $html .= '<img src="images/door_closed_large.gif" alt="door closed"/>'.LF;
+                $room_user = '';
             }
-            $html .= '<div style="padding-top:7px; font-size:8pt;"><p style="margin-top:0px; margin-bottom:0px;text-align:left;" class="disabled">'.$this->_translator->getMessage('ACCOUNT_NOT_ACCEPTED_YET').'</p></div>'.LF;
-         //Erlaubnis verweigert
-         } elseif ( !empty($room_user) and $room_user->isRejected() ) {
-            if ( $item->isOpenForGuests() ) {
-               $actionCurl = curl( $item->getItemID(),
-                                   'home',
-                                   'index',
-                                   '');
-               $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open"/></a>'.BRLF;
-               $actionCurl = curl( $item->getItemID(),
-                                   'home',
-                                   'index',
-                                   '');
-                $html .= '<div style="padding-top:7px; font-size:8pt;">'.'> <a style="display:inline; font-size:8pt;" class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_ENTER_AS_GUEST').'</a></div>'.LF;
-         } else {
-               $html .= '<img src="images/door_closed_large.gif" alt="door closed"/>'.LF;
-         }
-            $html .= '<div style="padding-top:7px; font-size:8pt;"><p style=" margin-top:0px; margin-bottom:0px;text-align:left;" class="disabled">'.$this->_translator->getMessage('ACCOUNT_NOT_ACCEPTED').'</p></div>'.LF;
+            unset($user_list);
+        }
 
-         // noch nicht angemeldet als Mitglied im Raum
-         } else {
-            $html .= '<img src="images/door_closed_large.gif" alt="door closed" style="vertical-align: middle; "/>'.BRLF;
-            if ( $item->isOpen() ) {
-               $params = array();
-               $params = $this->_environment->getCurrentParameterArray();
-               $params['account'] = 'member';
-               $params['room_id'] = $item->getItemID();
-               $actionCurl = curl( $this->_environment->getCurrentContextID(),
-                                  'home',
-                                  'index',
-                                  $params,
-                                  '');
-               $session_item = $this->_environment->getSessionItem();
-               if ($session_item->issetValue('login_redirect')) {
-                  $html .= '<div style="padding-top:7px; font-size:8pt;"><p style="margin-top:0px; margin-bottom:0px;text-align:left;" class="disabled">';
-                  if ( !$item->isPrivateRoom() and !$item->isGroupRoom() ) {
-                     $html .= $this->_translator->getMessage('CONTEXT_ENTER_LOGIN','<a class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_JOIN').'</a>');
-                  } else {
-                     $html .= $this->_translator->getMessage('CONTEXT_ENTER_LOGIN2');
-                  }
-                  $html .= '</p></div>'.LF;
-                  unset($session_item);
-               } elseif ( !$item->isPrivateRoom() and !$item->isGroupRoom() ) {
-                  $html .= '<div style="padding-top:5px; font-size:8pt;">'.'> <a class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_JOIN').'</a></div>'.LF;
-               }
-               unset($params);
-            } elseif ( !$item->isPrivateRoom() and !$item->isGroupRoom() ) {
-               $html .= '<div style="padding-top:5px; font-size:8pt;">> <span class="disabled">'.$this->_translator->getMessage('CONTEXT_JOIN').'</span></div>'.LF;
+        $current_user = $this->_environment->getCurrentUserItem();
+
+        //Anzeige außerhalb des Anmeldeprozesses
+        if ($mode !='member' and $mode !='info' and $mode !='email'){
+            $current_user = $this->_environment->getCurrentUserItem();
+            $may_enter = $item->mayEnter($current_user);
+            // Eintritt erlaubt
+            if ( $may_enter and ( ( !empty($room_user) and $room_user->isUser() ) or $current_user->isRoot() ) ) {
+                global $symfonyContainer;
+                $router = $symfonyContainer->get('router');
+
+                $actionCurl = $router->generate(
+                    'commsy_room_home',
+                    array('roomId' => $item->getItemID())
+                );
+
+                $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open" /></a>'.BRLF;
+                $html .= '<div style="padding-top:8px;">&nbsp;</div>'.BRLF;
+
+                //als Gast Zutritt erlaubt, aber kein Mitglied
+            } elseif ( $item->isLocked() ) {
+                $html .= '<img src="images/door_closed_large.gif" alt="door closed" />'.LF;
+
+            } elseif ( $item->isOpenForGuests()
+                and empty($room_user)
+            ) {
+                global $symfonyContainer;
+                $router = $symfonyContainer->get('router');
+
+                $actionCurl = $router->generate(
+                    'commsy_room_home',
+                    array('roomId' => $item->getItemID())
+                );
+
+                $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open" /></a>'.BRLF;
+                $html .= '<div style="padding-top:5px;">'.'> <a href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_ENTER_AS_GUEST').'</a></div>'.LF;
+                if ( $item->isOpen()
+                    and !$this->_current_user->isOnlyReadUser()
+                ) {
+                    $params = array();
+                    $params = $this->_environment->getCurrentParameterArray();
+                    $params['account'] = 'member';
+                    $params['room_id'] = $item->getItemID();
+                    $actionCurl = curl( $this->_environment->getCurrentContextID(),
+                        'home',
+                        'index',
+                        $params,
+                        '');
+                    $html .= '<div style="padding-top:3px;">'.'> <a href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_JOIN').'</a></div>'.LF;
+                    unset($params);
+                } else {
+                    $html .= '<div style="padding-top:3px;">> <span class="disabled">'.$this->_translator->getMessage('CONTEXT_JOIN').'</span></div>'.LF;
+                }
+
+                //Um Erlaubnis gefragt
+            } elseif ( !empty($room_user) and $room_user->isRequested() ) {
+                if ( $item->isOpenForGuests() ) {
+                    $actionCurl = curl( $item->getItemID(),
+                        'home',
+                        'index',
+                        '');
+                    $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open" /></a>'.BRLF;
+                    $actionCurl = curl( $item->getItemID(),
+                        'home',
+                        'index',
+                        '');
+                    $html .= '<div style="padding-top:7px; text-align: center;">'.'> <a class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_ENTER_AS_GUEST').'</a></div>'.LF;
+                } else {
+                    $html .= '<img src="images/door_closed_large.gif" alt="door closed"/>'.LF;
+                }
+                $html .= '<div style="padding-top:7px;"><p style="margin-top:0px; margin-bottom:0px;text-align:left;" class="disabled">'.$this->_translator->getMessage('ACCOUNT_NOT_ACCEPTED_YET').'</p></div>'.LF;
+                //Erlaubnis verweigert
+            } elseif ( !empty($room_user) and $room_user->isRejected() ) {
+                if ( $item->isOpenForGuests() ) {
+                    $actionCurl = curl( $item->getItemID(),
+                        'home',
+                        'index',
+                        '');
+                    $html .= '<a class="room_window" href="'.$actionCurl.'"><img src="images/door_open_large.gif" alt="door open"/></a>'.BRLF;
+                    $actionCurl = curl( $item->getItemID(),
+                        'home',
+                        'index',
+                        '');
+                    $html .= '<div style="padding-top:7px;">'.'> <a class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_ENTER_AS_GUEST').'</a></div>'.LF;
+                } else {
+                    $html .= '<img src="images/door_closed_large.gif" alt="door closed"/>'.LF;
+                }
+                $html .= '<div style="padding-top:7px;"><p style=" margin-top:0px; margin-bottom:0px;text-align:left;" class="disabled">'.$this->_translator->getMessage('ACCOUNT_NOT_ACCEPTED').'</p></div>'.LF;
+
+                // noch nicht angemeldet als Mitglied im Raum
+            } else {
+                $html .= '<img src="images/door_closed_large.gif" alt="door closed" style="vertical-align: middle; "/>'.BRLF;
+                if ( $item->isOpen()
+                    and !$this->_current_user->isOnlyReadUser()
+                ) {
+                    $params = array();
+                    $params = $this->_environment->getCurrentParameterArray();
+                    $params['account'] = 'member';
+                    $params['room_id'] = $item->getItemID();
+                    $actionCurl = curl( $this->_environment->getCurrentContextID(),
+                        'home',
+                        'index',
+                        $params,
+                        '');
+                    $session_item = $this->_environment->getSessionItem();
+                    if ($session_item->issetValue('login_redirect')) {
+                        $html .= '<div style="padding-top:7px;"><p style="margin-top:0px; margin-bottom:0px;text-align:left;" class="disabled">';
+                        if ( !$item->isPrivateRoom() and !$item->isGroupRoom() ) {
+                            $html .= $this->_translator->getMessage('CONTEXT_ENTER_LOGIN','<a class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_JOIN').'</a>');
+                        } else {
+                            $current_user_item = $this->_environment->getCurrentUserItem();
+                            $current_user_item = $current_user_item->getRelatedCommSyUserItem();
+                            if ( isset($current_user_item) and $current_user_item->isUser() ) {
+                                $html .= $this->_translator->getMessage('CONTEXT_ENTER_LOGIN_NOT_ALLOWED').LF;
+                                if($item->isGroupRoom()){
+                                    $linked_project_item = $item->getLinkedProjectItem();
+                                    $user_related_project_list = $current_user_item->getRelatedProjectList();
+                                    $user_is_room_member = false;
+                                    if ( $user_related_project_list->isNotEmpty() ) {
+                                        $room_item = $user_related_project_list->getFirst();
+                                        while ($room_item) {
+                                            if($room_item->getItemID() == $linked_project_item->getItemID()){
+                                                $user_is_room_member = true;
+                                                break;
+                                            }
+                                            $room_item = $user_related_project_list->getNext();
+                                        }
+                                    }
+                                    $html .= '<br/><br/>';
+                                    if($user_is_room_member){
+                                        $html .= $this->_translator->getMessage('CONTEXT_ENTER_NEED_TO_BECOME_GROUP_MEMBER', $item->getTitle(), $linked_project_item->getTitle());
+                                        $html .= '<br/><br/>';
+                                        $actionCurl = curl($linked_project_item->getItemID(),
+                                            'group',
+                                            'detail',
+                                            array('account' => 'member', 'iid' => $item->getLinkedGroupItemID()),
+                                            '');
+                                        $html .= '<a href="'.$actionCurl.'">' . $this->_translator->getMessage('COMMON_REGISTER_HERE') . '</a>'.LF;
+                                    } else {
+                                        $user_manager->setUserIDLimit($current_user->getUserID());
+                                        $user_manager->setAuthSourceLimit($current_user->getAuthSource());
+                                        $user_manager->setContextLimit($linked_project_item->getItemID());
+                                        $user_manager->select();
+                                        $user_list = $user_manager->get();
+                                        if (!empty($user_list)) {
+                                            $room_user = $user_list->getFirst();
+                                        } else {
+                                            $room_user = '';
+                                        }
+                                        if( !empty($room_user) and !$room_user->isRejected()){
+                                            $html .= $this->_translator->getMessage('CONTEXT_ENTER_NEED_TO_BECOME_ROOM_MEMBER', $linked_project_item->getTitle(), $item->getTitle());
+                                            $html .= '<br/><br/>';
+                                            $actionCurl = curl($this->_environment->getCurrentContextID(),
+                                                'home',
+                                                'index',
+                                                array('room_id' => $linked_project_item->getItemID(), 'account' => 'member'),
+                                                '');
+                                            $html .= '<a href="'.$actionCurl.'">' . $this->_translator->getMessage('COMMON_REGISTER_HERE') . '</a>'.LF;
+                                        } else {
+                                            $html .= $this->_translator->getMessage('ACCOUNT_NOT_ACCEPTED');
+                                        }
+                                    }
+                                }
+                            } else {
+                                $html .= $this->_translator->getMessage('CONTEXT_ENTER_LOGIN2');
+                            }
+                            unset($current_user_item);
+                        }
+                        $html .= '</p></div>'.LF;
+                        unset($session_item);
+                    } elseif ( !$item->isPrivateRoom() and !$item->isGroupRoom() ) {
+                        $html .= '<div style="padding-top:5px;">'.'> <a class="room_window" href="'.$actionCurl.'">'.$this->_translator->getMessage('CONTEXT_JOIN').'</a></div>'.LF;
+                    }
+                    unset($params);
+                } elseif ( !$item->isPrivateRoom() and !$item->isGroupRoom() ) {
+                    $html .= '<div style="padding-top:5px;">> <span class="disabled">'.$this->_translator->getMessage('CONTEXT_JOIN').'</span></div>'.LF;
+                }
+                $html .= '<div style="padding-top:6px;">&nbsp;</div>'.LF;
             }
-            $html .= '<div style="padding-top:6px; font-size:8pt;">&nbsp;</div>'.LF;
-         }
-      }
-      return $html;
-   }
+        }
+        return $html;
+    }
 
    function _getRoomFacts($item){
       $html ='';
