@@ -1791,6 +1791,7 @@ class cs_external_page_portal_view extends cs_page_view {
       $retour .= '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">'.LF;
       $retour .= '<html>'.LF;
       $retour .= '<head>'.LF;
+      $retour .= '<meta name="viewport" content="width=device-width,initial-scale=1.0">'.LF;
       $retour .= '   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>'.LF;
       $retour .= '   <meta http-equiv="expires" content="-1"/>'.LF;
       $retour .= '   <meta http-equiv="cache-control" content="no-cache"/>'.LF;
