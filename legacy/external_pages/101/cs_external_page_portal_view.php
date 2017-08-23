@@ -2629,6 +2629,28 @@ div.strong #iStrong, div.medium #iMedium, div.weak #iWeak {
     text-decoration: none;
 }
 
+.pull-right {
+    float: right;
+}
+
+.menu-link {
+    font-size: 35px;
+    padding-right: 25px;
+    padding-top: 23px;
+}
+
+.visible-xs {
+    display: none;
+}
+
+#menu_mobile {
+      display: none;
+   }
+
+.showMenu {
+      display: none !important;
+   }
+
 /*
 ----------------------------------------------------------------------
 Responsive
@@ -2666,6 +2688,39 @@ Responsive
         clear: both;
         width: 100%;
     }
+
+   .visible-xs {
+       display: block;
+   }
+   
+   #menu {
+      display: none;
+   }
+   
+   .showMenu {
+      display: block !important;
+   }
+   
+   #menu_mobile {
+      display: none;
+      padding: 0px 0px 20px 0px;
+      background-color: #ffffff;
+      font-size: 19px;
+      line-height: 23px;
+      margin-top: 0px;
+   }
+   
+   #menu_mobile li {
+      display: block;
+      padding: 0px 8px;
+   }
+   
+   #menu_mobile a {
+    color: #1F1A17;
+    text-shadow: #FFF 0px 1px;
+    text-decoration: none;
+   }
+   
 }
        
        ';
@@ -3278,11 +3333,9 @@ Responsive
             // login redirect
             $session_item = $this->_environment->getSessionItem();
             if ($session_item->issetValue('login_redirect')) {
-               $params = $session_item->getValue('login_redirect');
-               foreach ( $params as $key => $value ) {
-                  $html .= '<input type="hidden" name="login_redirect['.$key.']" value="'.$value.'"/>'.LF;
-               }
-               $session_item->unsetValue('login_redirect');
+		                $redirectUrl = $session_item->getValue('login_redirect');
+		                $html .= '<input type="hidden" name="login_redirect" value="' . $redirectUrl . '"/>' . LF;
+		                $session_item->unsetValue('login_redirect');
             }
 
             // login form
@@ -4644,8 +4697,30 @@ Responsive
     $html .= '<div id="wrapper">'.LF;
     $html .= '    <div id="header" style="padding-top: 0px;">'.LF;
     $html .= '        <a href="//sh.schulcommsy.de" title="SchulCommSy Startseite"><img src="css/external_portal_styles/'.$current_context->getItemID().'/img/portal_logo.gif" alt="SchulCommSy" /></a>'.LF;
-            
-    $html .= '        <ul>'.LF;
+
+    $html .= '
+        <script type="text/javascript">
+           function toggleMenu(){
+              var element = document.getElementById("menu_mobile");
+              var toggleClass = "showMenu";
+               
+              var currentClass = element.className;
+              var newClass;
+              if(currentClass.split(" ").indexOf(toggleClass) > -1){ //has class
+                 newClass = "";
+              }else{
+                 newClass = currentClass + " " + toggleClass;
+              }
+              element.className = newClass.trim();
+           }
+      </script>
+   ';
+
+    $html .= '<div class="pull-right menu-link visible-xs">';
+    $html .= '<a href="#" onClick="toggleMenu();"><img src="css/external_portal_styles/'.$current_context->getItemID().'/img/menu.png" style="margin-top: -12px;">';
+    $html .= '</div>';
+
+    $html .= '        <ul id="menu">'.LF;
     $html .= '            <li><a href="//sh.schulcommsy.de">Startseite</a></li>';
     $html .= '            <li><a href="//schulintern.sh.schulcommsy.de" id="' . (($activeLink == 0) ? 'active' : '') . '">Schulintern</a></li>';
     $html .= '            <li><a href="//unterricht.sh.schulcommsy.de" id="' . (($activeLink == 1) ? 'active' : '') . '">Unterricht</a></li>';
@@ -4654,15 +4729,23 @@ Responsive
     $html .= '            <li><a href="//sh.schulcommsy.de/antrag">Antrag</a></li>';
     $html .= '            <li><a href="//sh.schulcommsy.de/ansprechpartner/">Ansprechpartner</a></li>';
     $html .= '        </ul>'.LF;
-            
+
     $html .= '        <div class="clear"> </div>'.LF;
     $html .= '    </div>'.LF;
-        
+
+       $html .= '        <ul id="menu_mobile">'.LF;
+       $html .= '            <li><a href="//sh.schulcommsy.de">Startseite</a></li>';
+       $html .= '            <li><a href="//schulintern.sh.schulcommsy.de" id="' . (($activeLink == 0) ? 'active' : '') . '">Schulintern</a></li>';
+       $html .= '            <li><a href="//unterricht.sh.schulcommsy.de" id="' . (($activeLink == 1) ? 'active' : '') . '">Unterricht</a></li>';
+       $html .= '            <li><a href="//institutionen.sh.schulcommsy.de" id="' . (($activeLink == 2) ? 'active' : '') . '">Institutionen</a></li>';
+       $html .= '            <li><a href="//sh.schulcommsy.de/hilfe">Hilfe</a></li>';
+       $html .= '            <li><a href="//sh.schulcommsy.de/antrag">Antrag</a></li>';
+       $html .= '            <li><a href="//sh.schulcommsy.de/ansprechpartner/">Ansprechpartner</a></li>';
+       $html .= '        </ul>'.LF;
+
     $html .= '    <div id="claim">'.LF;
     $html .= '        SchulCommSy Schleswig-Holstein'.LF;
     $html .= '    </div>'.LF;
-
-
 
 # rechte Box, die zu füllen ist.
     if ( !(isset($this->_agb_view) or
@@ -4921,4 +5004,5 @@ $html .= '<div class="clear"> </div>';
 
  }
 ?>
+
 
