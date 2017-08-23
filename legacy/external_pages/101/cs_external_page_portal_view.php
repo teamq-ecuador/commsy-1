@@ -2721,6 +2721,14 @@ Responsive
     text-decoration: none;
    }
    
+   #maincontent .column_02 {
+      display: none;
+   }
+   
+   #portal_search {
+      display: none;
+   }
+   
 }
        
        ';
@@ -4873,7 +4881,7 @@ Responsive
     $html .= '<div class="column_01">';
     $html .= '         <div id="sidebar-mapper" >'.LF;
     $html .= '            <div id="sidebar" >'.LF;
-    $html .= '<div id="portal_search">'.LF;
+    $html .= '<div id="portal_login">'.LF;
 
 
     $html .= $this->getMyAreaAsHTML(str_replace('commsy_session_id='.$sid.'&','',$wiki_url));
