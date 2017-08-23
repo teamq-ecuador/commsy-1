@@ -29,6 +29,12 @@ class RoomController extends Controller
         $roomManager = $legacyEnvironment->getRoomManager();
         $roomItem = $roomManager->getItem($roomId);
 
+        // fall back on default theme if rooms theme is not supported anymore
+        if (!in_array($roomItem->getColorArray()['schema'], $this->container->getParameter('liip_theme.themes'))) {
+            $roomItem->setColorArray(array('schema' => 'default'));
+            $roomItem->save();
+        }
+
         if (!$roomItem) {
             throw $this->createNotFoundException('The requested room does not exist');
         }
@@ -477,7 +483,7 @@ class RoomController extends Controller
                 $contextAgbDate = $currentContext->getAGBChangeDate();
                 if ($userAgbDate < $contextAgbDate) {
                     $show = true;
-                    $modalTitle = $translator->trans('AGB');
+                    $modalTitle = $translator->trans('AGB', [], 'room');
                     $modalMessage = $currentContext->getAGBTextArray()[strtoupper($legacyEnvironment->getUserLanguage())];
                     $modalConfirm = $this->generateUrl('commsy_room_acceptagb', array('roomId' => $roomId));
                     $modalCancel = $this->generateUrl('commsy_dashboard_overview', array('roomId' => $currentUser->getOwnRoom()->getItemId()));
