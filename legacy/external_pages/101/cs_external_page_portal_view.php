@@ -4961,7 +4961,7 @@ $html .= '<div class="clear"> </div>';
     $html .= '        <h2>Projektpartner:</h2>'.LF;
     $html .= '        <div id="partner_area">'.LF;
     $html .= '            <ul>'.LF;
-    $html .= '                <li><a href="http://www.schleswig-holstein.de/IQSH/DE/IQSH_node.html" target="_blank" title="IQSH"><img src="css/external_portal_styles/'.$current_context->getItemID().'/img/partner_iqsh.gif" alt="Institut für Qualitätsentwicklung an Schulen Schleswig-Holstein" style="height: 50px; margin-top: 10px;" /></a></li>'.LF;
+    $html .= '                <li><a href="http://www.schleswig-holstein.de/DE/Landesregierung/IQSH/iqsh_node.html" target="_blank" title="IQSH"><img src="css/external_portal_styles/'.$current_context->getItemID().'/img/partner_iqsh.gif" alt="Institut für Qualitätsentwicklung an Schulen Schleswig-Holstein" style="height: 50px; margin-top: 10px;" /></a></li>'.LF;
     $html .= '                <li><a href="http://www.effective-webwork.de" target="_blank" title="effective WEBWORK GmbH"><img src="css/external_portal_styles/'.$current_context->getItemID().'/img/partner_03.gif" alt="effective WEBWORK GmbH" /></a></li>'.LF;
     $html .= '                <li><a href="http://www.commsy.net" target="_blank" title="CommSy"><img src="css/external_portal_styles/'.$current_context->getItemID().'/img/partner_04.gif" alt="CommSy" /></a></li>'.LF;
     $html .= '            </ul>'.LF;
