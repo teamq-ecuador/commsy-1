@@ -41,6 +41,9 @@ parameters:
     elastic_user: ~
     elastic_password: ~
 
+    # security
+    security.privacy_disable_overwriting: false
+
     # extensions
     extensions.etherpad.enabled: false
     extensions.etherpad.api_key: ~
@@ -51,3 +54,6 @@ parameters:
     extensions.mediawiki.url: ~
     extensions.mediawiki.room_wiki_url: ~
     extensions.mediawiki.api_path: /api.php
+
+    #dates
+    dates.timezone: ~
