@@ -77,6 +77,9 @@ class UserController extends Controller
 
         // get user list from manager service 
         $users = $userService->getListUsers($roomId, $max, $start, $currentUser->isModerator(), $sort);
+
+        $this->get('session')->set('sortUsers', $sort);
+
         $readerService = $this->get('commsy_legacy.reader_service');
 
         $readerList = [];
@@ -200,9 +203,9 @@ class UserController extends Controller
     }
 
     /**
-     * @Route("/room/{roomId}/user/print")
+     * @Route("/room/{roomId}/user/print/{sort}", defaults={"sort" = "none"})
      */
-    public function printlistAction($roomId, Request $request)
+    public function printlistAction($roomId, Request $request, $sort)
     {
         $legacyEnvironment = $this->get('commsy_legacy.environment')->getEnvironment();
         $currentUser = $legacyEnvironment->getCurrentUserItem();
@@ -229,6 +232,7 @@ class UserController extends Controller
 
         // get the user manager service
         $userService = $this->get('commsy_legacy.user_service');
+        $numAllUsers = $userService->getCountArray($roomId)['countAll'];
 
         $userService->resetLimits();
         // apply filter
@@ -238,8 +242,19 @@ class UserController extends Controller
             $userService->setFilterConditions($filterForm);
         }
 
-        // get user list from manager service 
         $users = $userService->getListUsers($roomId);
+
+        // get user list from manager service
+        if ($sort != "none") {
+            $users = $userService->getListUsers($roomId, $numAllUsers, 0, $sort);
+        }
+        elseif ($this->get('session')->get('sortUsers')) {
+            $users = $userService->getListUsers($roomId, $numAllUsers, 0, $this->get('session')->get('sortUsers'));
+        }
+        else {
+            $users = $userService->getListUsers($roomId, $numAllUsers, 0, 'date');
+        }
+
         $readerService = $this->get('commsy_legacy.reader_service');
         $legacyEnvironment = $this->get('commsy_legacy.environment')->getEnvironment();
         $current_context = $legacyEnvironment->getCurrentContextItem();
@@ -1041,8 +1056,18 @@ class UserController extends Controller
     public function guestimageAction()
     {
         $avatarService = $this->get('commsy.avatar_service');
-        $content = $avatarService->getUnknownUserImage();
-        $response = new Response($content, Response::HTTP_OK, array('content-type' => 'image'));
+        $response = new Response($avatarService->getUnknownUserImage(), Response::HTTP_OK, array('content-type' => 'image'));
+        $contentDisposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_INLINE, \Nette\Utils\Strings::webalize('user_unknown.gif'));
+        $response->headers->set('Content-Disposition', $contentDisposition);
+        return $response;
+    }
+
+    /**
+     * @Route("/room/{roomId}/user/{itemId}/initials")
+     */
+    public function initialsAction($roomId, $itemId, Request $request) {
+        $avatarService = $this->get('commsy.avatar_service');
+        $response = new Response($avatarService->getAvatar($itemId), Response::HTTP_OK, array('content-type' => 'image'));
         $contentDisposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_INLINE, \Nette\Utils\Strings::webalize('user_unknown.gif'));
         $response->headers->set('Content-Disposition', $contentDisposition);
         return $response;
@@ -1099,7 +1124,9 @@ class UserController extends Controller
             $file = 'user_unknown.gif';
         }
         
-        if (!$foundUserImage || !preg_match("/room\/".$roomId."/", $request->headers->get('referer'))) {
+        $referer = $request->headers->get('referer');
+
+        if (!$foundUserImage || (!preg_match("/room\/".$roomId."/", $referer) && !preg_match("/dashboard/", $referer) ) ) {
             $avatarService = $this->get('commsy.avatar_service');
             
             $content = $avatarService->getAvatar($itemId);
