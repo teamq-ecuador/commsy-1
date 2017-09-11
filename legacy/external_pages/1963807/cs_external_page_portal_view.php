@@ -4770,7 +4770,7 @@ Responsive
     ) {
    $html .= '    <div id="maincontent">'.LF;
     $html .= '        <div class="column_02">'.LF;
-    $html .= '            <h2>Raumliste: Schulintern</h2>'.LF;
+    $html .= '            <h2>Raumliste: '.$this->_environment->getCurrentPortalItem()->getTitle().'</h2>'.LF;
     $html .= '            <div class="column_content">'.LF;
        $html .= '         <div id="content">'.LF;
     }else{
