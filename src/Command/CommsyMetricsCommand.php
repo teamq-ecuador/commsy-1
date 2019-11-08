@@ -28,7 +28,12 @@ class CommsyMetricsCommand extends Command
     {
         $this
             ->setDescription('Outputs metrics for commsy')
-            ->addOption('format', null, InputOption::VALUE_REQUIRED, 'Output format', 'json')
+            ->addOption('format', null, InputOption::VALUE_REQUIRED, 'Output formats: json, influxdb', 'json')
+            ->addOption('influx-host', null, InputOption::VALUE_REQUIRED, 'InfluxDB host')
+            ->addOption('influx-port', null, InputOption::VALUE_REQUIRED, 'InfluxDB port', '8086')
+            ->addOption('influx-database', null, InputOption::VALUE_REQUIRED, 'InfluxDB database')
+            ->addOption('influx-user', null, InputOption::VALUE_REQUIRED, 'InfluxDB user')
+            ->addOption('influx-password', null, InputOption::VALUE_REQUIRED, 'InfluxDB password')
         ;
     }
 
@@ -37,6 +42,7 @@ class CommsyMetricsCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $this->metricBuilder->collectMetrics();
-        $output->write($this->metricBuilder->getFormattedOutput($input->getOption('format')));
+        $formatter = $this->metricBuilder->getFormatter($input);
+        $output->write($formatter->format($this->metricBuilder->getMetrics()));
     }
 }

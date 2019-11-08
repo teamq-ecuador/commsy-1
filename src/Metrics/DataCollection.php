@@ -9,7 +9,7 @@ class DataCollection implements \IteratorAggregate
     /**
      * @var DataPoint[]
      */
-    private $datapoints;
+    private $datapoints = [];
 
     public function addDatapoint(DataPoint $dataPoint)
     {

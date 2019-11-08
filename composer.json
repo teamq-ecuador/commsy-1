@@ -17,6 +17,7 @@
         "friendsofsymfony/ckeditor-bundle": "^2.0",
         "friendsofsymfony/elastica-bundle": "5.0.3",
         "idci/color-scheme-bundle": "dev-master",
+        "influxdb/influxdb-php": "^1.15",
         "knplabs/knp-menu-bundle": "^2.2",
         "knplabs/knp-snappy-bundle": "^1.6",
         "lexik/form-filter-bundle": "^5.0",

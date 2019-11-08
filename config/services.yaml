@@ -1153,6 +1153,9 @@ services:
     App\Metrics\DataCollection:
         autowire: false
 
+    App\Metrics\Formatter\InfluxOutputFormatter:
+        autowire: false
+
     # actions
 
     App\Action\MarkRead\MarkReadGeneric:
