@@ -971,7 +971,7 @@ fos_elastica:
                             search_analyzer: html_strip_analyzer
                         files:
                             # resolved by FOSElastica using POST_TRANSFORM
-#                            property_path: false
+                            property_path: false
 #                            type: 'attachment'
                     persistence:
                         driver: orm

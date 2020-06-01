@@ -2,10 +2,17 @@
 
 namespace App\EventListener;
 
-use App\Services\LegacyEnvironment;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-
+use Elastica\Pipeline;
+use Elastica\Processor\Attachment;
+use FOS\ElasticaBundle\Elastica\Client;
+use FOS\ElasticaBundle\Event\IndexPopulateEvent;
+use FOS\ElasticaBundle\Event\IndexResetEvent;
 use FOS\ElasticaBundle\Event\TransformEvent;
+use FOS\ElasticaBundle\Persister\Event\Events;
+use FOS\ElasticaBundle\Persister\Event\PrePersistEvent;
+use App\Services\LegacyEnvironment;
+use FOS\ElasticaBundle\Persister\ObjectPersister;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class ElasticCustomPropertyListener implements EventSubscriberInterface
 {
@@ -13,17 +20,51 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
 
     private $itemCache = [];
 
-    public function __construct(LegacyEnvironment $legacyEnvironment)
+    private $client;
+
+    public function __construct(LegacyEnvironment $legacyEnvironment, Client $client)
     {
         $this->legacyEnvironment = $legacyEnvironment->getEnvironment();
+        $this->client = $client;
+
     }
 
     public static function getSubscribedEvents()
     {
         return [
-            TransformEvent::POST_TRANSFORM => 'addCustomProperty'
+            IndexResetEvent::POST_INDEX_RESET => 'onPostIndexReset', // DEBUG
+            IndexPopulateEvent::PRE_INDEX_POPULATE => 'onPreIndexPopulate', // DEBUG
+            TransformEvent::POST_TRANSFORM => 'addCustomProperty',
+            Events::PRE_PERSIST => 'onPrePersist',
         ];
     }
+
+    // DEBUG
+    public function onPostIndexReset(IndexResetEvent $event)
+    {
+        // NOTE: this seems to get called once for an index populate request
+        var_dump($event);
+    }
+
+    // DEBUG
+    public function onPreIndexPopulate(IndexPopulateEvent $event)
+    {
+        // TODO: this doesn't seem to get called!?
+        var_dump($event);
+        $index = $this->client->getIndex('commsy_material');
+        $settings = $index->getSettings();
+        var_dump($settings);
+    }
+
+
+    public function onPrePersist(PrePersistEvent $event)
+    {
+        var_dump($event);
+        /** @var ObjectPersister $objectPersister */
+        $objectPersister = $event->getObjectPersister();
+        $objectPersister->setOption('pipeline', 'attachment');
+    }
+
 
     public function addCustomProperty(TransformEvent $event)
     {
@@ -87,32 +128,50 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
         }
     }
 
+    private function getItemCached($itemId)
+    {
+        // cache wiping
+        if (sizeof($this->itemCache) >= 10000) {
+            $this->itemCache = [];
+        }
+
+        // cache hit
+        if (isset($this->itemCache[$itemId])) {
+            return $this->itemCache[$itemId];
+        }
+
+        // cache miss
+        $itemManager = $this->legacyEnvironment->getItemManager();
+        $item = $itemManager->getItem($itemId);
+
+        if ($item) {
+            $this->itemCache[$itemId] = $item;
+            return $item;
+        }
+
+        return null;
+    }
+
     private function addTags(TransformEvent $event)
     {
         $item = $this->getItemCached($event->getObject()->getItemId());
 
-        if ($item) {
-            // when building the index from the CLI command, the context ID is not populated, thus we set it here explicitly
-            $this->legacyEnvironment->setCurrentContextID($item->getContextID());
-
-            $tags = $item->getTagList();
-            if ($tags->isNotEmpty()) {
-                $objectTags = [];
-
-                $tag = $tags->getFirst();
-                while ($tag) {
-                    if (!$tag->isDeleted()) {
-                        $objectTags[] = $tag->getTitle();
-                    }
-
-                    $tag = $tags->getNext();
-                }
-
-                if (!empty($objectTags)) {
-                    $event->getDocument()->set('tags', $objectTags);
-                }
-            }
+        if (!$item) {
+            return;
         }
+
+        $attachment = new Attachment('file_data');
+        // TODO: Better create pipeline in response to a rarely called event? And only create the pipeline if it's not in getPipelines() yet
+        $pipeline = new Pipeline($this->client);
+        $pipeline->setId('attachment');
+        $pipeline->setDescription('attachment pipeline');
+        $pipeline->addProcessor($attachment);
+        $pipeline->create();
+
+        $doc = $event->getDocument();
+        // TODO: add the item's actual file(s)
+        // TODO: how can we add multiple files per document?
+        $doc->addFile('file_data', '/var/www/html/ElasticIngest-Test.pdf');
     }
 
     private function addAnnotations(TransformEvent $event)
@@ -286,29 +345,5 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
                 }
             }
         }
-    }
-
-    private function getItemCached($itemId)
-    {
-        // cache wiping
-        if (sizeof($this->itemCache) >= 10000) {
-            $this->itemCache = [];
-        }
-
-        // cache hit
-        if (isset($this->itemCache[$itemId])) {
-            return $this->itemCache[$itemId];
-        }
-
-        // cache miss
-        $itemManager = $this->legacyEnvironment->getItemManager();
-        $item = $itemManager->getItem($itemId);
-
-        if ($item) {
-            $this->itemCache[$itemId] = $item;
-            return $item;
-        }
-
-        return null;
     }
 }
