@@ -14,6 +14,8 @@ use App\Services\LegacyEnvironment;
 use FOS\ElasticaBundle\Persister\ObjectPersister;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
+
+
 class ElasticCustomPropertyListener implements EventSubscriberInterface
 {
     private $legacyEnvironment;
@@ -22,18 +24,18 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
 
     private $client;
 
+    private $pipeline;
+
     public function __construct(LegacyEnvironment $legacyEnvironment, Client $client)
     {
         $this->legacyEnvironment = $legacyEnvironment->getEnvironment();
         $this->client = $client;
-
     }
 
     public static function getSubscribedEvents()
     {
         return [
             IndexResetEvent::POST_INDEX_RESET => 'onPostIndexReset', // DEBUG
-            IndexPopulateEvent::PRE_INDEX_POPULATE => 'onPreIndexPopulate', // DEBUG
             TransformEvent::POST_TRANSFORM => 'addCustomProperty',
             Events::PRE_PERSIST => 'onPrePersist',
         ];
@@ -43,33 +45,24 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
     public function onPostIndexReset(IndexResetEvent $event)
     {
         // NOTE: this seems to get called once for an index populate request
-        var_dump($event);
-    }
-
-    // DEBUG
-    public function onPreIndexPopulate(IndexPopulateEvent $event)
-    {
-        // TODO: this doesn't seem to get called!?
-        var_dump($event);
-        $index = $this->client->getIndex('commsy_material');
-        $settings = $index->getSettings();
-        var_dump($settings);
+//        var_dump($event);
     }
 
 
     public function onPrePersist(PrePersistEvent $event)
     {
-        var_dump($event);
-        /** @var ObjectPersister $objectPersister */
-        $objectPersister = $event->getObjectPersister();
-        $objectPersister->setOption('pipeline', 'attachment');
+        $options = $event->getOptions();
+        if($options['indexName'] !== 'commsy_room' && $options['indexName'] !== 'commsy_user'){
+            /** @var ObjectPersister $objectPersister */
+            $objectPersister = $event->getObjectPersister();
+            $objectPersister->setOption('pipeline', 'attachment');
+        }
     }
 
 
     public function addCustomProperty(TransformEvent $event)
     {
         $fields = $event->getFields();
-
         if (isset($fields['hashtags'])) {
             $this->addHashtags($event);
         }
@@ -159,19 +152,6 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
         if (!$item) {
             return;
         }
-
-        $attachment = new Attachment('file_data');
-        // TODO: Better create pipeline in response to a rarely called event? And only create the pipeline if it's not in getPipelines() yet
-        $pipeline = new Pipeline($this->client);
-        $pipeline->setId('attachment');
-        $pipeline->setDescription('attachment pipeline');
-        $pipeline->addProcessor($attachment);
-        $pipeline->create();
-
-        $doc = $event->getDocument();
-        // TODO: add the item's actual file(s)
-        // TODO: how can we add multiple files per document?
-        $doc->addFile('file_data', '/var/www/html/ElasticIngest-Test.pdf');
     }
 
     private function addAnnotations(TransformEvent $event)
@@ -207,8 +187,10 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
             $fileContents = [];
 
             $files = $item->getFileList();
+
             if ($files->isNotEmpty()) {
                 $file = $files->getFirst();
+
                 while ($file) {
                     if (!$file->isDeleted()) {
                         $fileSize = $file->getFileSize();
@@ -226,6 +208,32 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
             }
 
             $event->getDocument()->set('files', $fileContents);
+
+
+            $this->attachFile($files, $event);
+        }
+    }
+
+    public function createPipeline(Client $client){
+        if(!$this->pipeline){
+            $attachment = new Attachment('file_data');
+            // TODO: Better create pipeline in response to a rarely called event? And only create the pipeline if it's not in getPipelines() yet
+            $pipeline = new Pipeline($this->client);
+            $pipeline->setId('attachment');
+            $pipeline->setDescription('attachment pipeline');
+            $pipeline->addProcessor($attachment);
+            $pipeline->create();
+        }
+    }
+
+    public function attachFile($files, $event){
+
+        if($files->isNotEmpty()){
+            $file = $files->getFirst();
+            $filepath = $file->_data['filepath'];
+            $doc = $event->getDocument();
+            // TODO: how can we add multiple files per document?
+            $doc->addFile('file_data', $filepath);
         }
     }
 
@@ -346,4 +354,5 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
             }
         }
     }
+
 }
