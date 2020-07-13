@@ -611,6 +611,8 @@ services:
     commsy.search.manager:
         alias: App\Search\SearchManager
 
+
+    App\Services\File2TextService: ~
     App\Search\SearchManager:
         autowire: false
         arguments:

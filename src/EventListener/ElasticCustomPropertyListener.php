@@ -2,6 +2,7 @@
 
 namespace App\EventListener;
 
+use App\Services\File2TextService;
 use App\Services\LegacyEnvironment;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -12,10 +13,15 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
     private $legacyEnvironment;
 
     private $itemCache = [];
+    /**
+     * @var File2TextService
+     */
+    private $file2TextService;
 
-    public function __construct(LegacyEnvironment $legacyEnvironment)
+    public function __construct(LegacyEnvironment $legacyEnvironment, File2TextService $file2TextService)
     {
         $this->legacyEnvironment = $legacyEnvironment->getEnvironment();
+        $this->file2TextService = $file2TextService;
     }
 
     public static function getSubscribedEvents()
@@ -146,19 +152,27 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
 
         if ($item) {
             $fileContents = [];
-
+            $filesPlain = [];
             $files = $item->getFileList();
             if ($files->isNotEmpty()) {
+
+                /** @var \cs_file_item $file */
                 $file = $files->getFirst();
                 while ($file) {
                     if (!$file->isDeleted()) {
                         $fileSize = $file->getFileSize();
-
                         if (round($fileSize / 1024) < 25) {
                             $content = $file->getContentBase64();
                             if (!empty($content)) {
                                 $fileContents[] = $content;
                             }
+                        }
+                        $fileName = $file->getDiskFileName();
+                        echo $fileName;
+                        $this->file2TextService->setFileName($fileName);
+                        $contentPlain = $this->file2TextService->convertToText();
+                        if(!empty($contentPlain)){
+                            $filesPlain[] = $contentPlain;
                         }
                     }
 
@@ -167,6 +181,7 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
             }
 
             $event->getDocument()->set('files', $fileContents);
+            $event->getDocument()->set('filesRaw', $filesPlain);
         }
     }
 
