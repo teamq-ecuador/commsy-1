@@ -167,10 +167,10 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
                                 $fileContents[] = $content;
                             }
                         }
-                        $fileName = $file->getDiskFileName();
-                        echo $fileName;
-                        $this->file2TextService->setFileName($fileName);
-                        $contentPlain = $this->file2TextService->convertToText();
+                        $fileName = $file->getPath();
+//                        echo $fileName;
+
+                        $contentPlain = $this->file2TextService->convert($fileName);
                         if(!empty($contentPlain)){
                             $filesPlain[] = $contentPlain;
                         }

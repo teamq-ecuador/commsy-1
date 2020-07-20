@@ -159,6 +159,9 @@ services:
         autoconfigure: false
         tags:
             - 'doctrine.fixture.orm'
+    _instanceof:
+        App\DocumentConverter\DocumentConverterInterface:
+            tags: ['app.document_converter']
 
 
 ###############################
@@ -613,6 +616,12 @@ services:
 
 
     App\Services\File2TextService: ~
+
+    App\DocumentConverter\ConverterManager:
+        class: App\DocumentConverter\ConverterManager
+        arguments:
+            - !tagged 'app.document_converter'
+
     App\Search\SearchManager:
         autowire: false
         arguments:

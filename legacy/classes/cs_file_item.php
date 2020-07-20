@@ -853,4 +853,12 @@ class cs_file_item extends cs_item {
             return null;
         }
     }
+
+    public function getPath()
+    {
+        global $symfonyContainer;
+        $projectDir = $symfonyContainer->get('kernel')->getProjectDir();
+
+        return $projectDir . '/' . $this->getFilepath();
+    }
 }
