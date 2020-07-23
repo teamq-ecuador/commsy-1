@@ -4,10 +4,12 @@
 namespace App\DocumentConverter;
 
 
+use DOMDocument;
 use ZipArchive;
 
 class PowerPointConverter extends AbstractDocumentConverter
 {
+    protected $formatsAllowed = ['pptx',];
 
     public function convertToText(string $completeFilePath): ?string
     {

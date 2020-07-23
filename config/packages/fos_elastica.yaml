@@ -975,6 +975,9 @@ fos_elastica:
 #                            type: 'attachment'
                         filesRaw:
                             property_path: false
+                            type: text
+                            analyzer: html_strip_analyzer
+                            search_analyzer: html_strip_analyzer
 
                     persistence:
                         driver: orm

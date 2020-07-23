@@ -6,7 +6,8 @@ namespace App\DocumentConverter;
 
 class WordConverter extends AbstractDocumentConverter
 {
-    protected $formatsAllowed =['doc', 'docx'];
+    protected $formatsAllowed = ['doc', 'docx'];
+
     public function convertToText(string $completeFilePath): ?string
     {
         $fileArray = pathinfo($completeFilePath);
@@ -55,6 +56,7 @@ class WordConverter extends AbstractDocumentConverter
 
         $content = str_replace('</w:r></w:p></w:tc><w:tc>', " ", $content);
         $content = str_replace('</w:r></w:p>', "\r\n", $content);
-        return strip_tags($content);
+        $content = strip_tags($content);
+        return $this->cleanString($content);
     }
 }

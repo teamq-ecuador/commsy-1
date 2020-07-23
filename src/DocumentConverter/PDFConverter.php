@@ -45,7 +45,8 @@ class PDFConverter extends AbstractDocumentConverter
             }
         }
 
-       return $this->getTextUsingTransformations($texts, $transformations);
+        $content = $this->getTextUsingTransformations($texts, $transformations);
+        return $this->cleanString($content);
     }
 
 
