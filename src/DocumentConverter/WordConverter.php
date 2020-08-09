@@ -57,6 +57,6 @@ class WordConverter extends AbstractDocumentConverter
         $content = str_replace('</w:r></w:p></w:tc><w:tc>', " ", $content);
         $content = str_replace('</w:r></w:p>', "\r\n", $content);
         $content = strip_tags($content);
-        return $this->cleanString($content);
+        return $content;
     }
 }

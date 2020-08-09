@@ -51,6 +51,10 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
             $this->addFilesContent($event);
         }
 
+        if (isset($fields['filesRaw'])) {
+            $this->addFilesRawContent($event);
+        }
+
         if (isset($fields['discussionarticles'])) {
             $this->addDiscussionArticles($event);
         }
@@ -152,7 +156,6 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
 
         if ($item) {
             $fileContents = [];
-            $filesPlain = [];
             $files = $item->getFileList();
             if ($files->isNotEmpty()) {
 
@@ -167,13 +170,6 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
                                 $fileContents[] = $content;
                             }
                         }
-                        $fileName = $file->getPath();
-//                        echo $fileName;
-
-                        $contentPlain = $this->file2TextService->convert($fileName);
-                        if(!empty($contentPlain)){
-                            $filesPlain[] = $contentPlain;
-                        }
                     }
 
                     $file = $files->getNext();
@@ -181,6 +177,32 @@ class ElasticCustomPropertyListener implements EventSubscriberInterface
             }
 
             $event->getDocument()->set('files', $fileContents);
+        }
+    }
+
+
+    private function addFilesRawContent(TransformEvent $event)
+    {
+        $item = $this->getItemCached($event->getObject()->getItemId());
+
+        if ($item) {
+            $filesPlain = [];
+            $files = $item->getFileList();
+            if ($files->isNotEmpty()) {
+
+                /** @var \cs_file_item $file */
+                $file = $files->getFirst();
+                while ($file) {
+                    if (!$file->isDeleted()) {
+                        $fileName = $file->getPath();
+                        $contentPlain = $this->file2TextService->convert($fileName);
+                        if(!empty($contentPlain)){
+                            $filesPlain[] = $contentPlain;
+                        }
+                    }
+                    $file = $files->getNext();
+                }
+            }
             $event->getDocument()->set('filesRaw', $filesPlain);
         }
     }

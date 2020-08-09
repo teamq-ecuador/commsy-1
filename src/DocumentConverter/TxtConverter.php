@@ -13,6 +13,6 @@ class TxtConverter extends AbstractDocumentConverter
         if (empty($content))
             return null;
 
-        return $this->cleanString($content);
+        return $content;
     }
 }
