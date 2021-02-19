@@ -2138,4 +2138,18 @@ class cs_manager {
             $this->setTagArrayLimit($limits['categories']);
         }
     }
+
+    /**
+     * @param $value
+     * @param $databaseField
+     * @param false $isString
+     * @return string
+     */
+    protected function returnQuerySentenceIfFieldIsValid($value, $databaseField, $isString=false): string {
+        if(!is_null($value) && $value !== ""){
+            $doubleQuotes = $isString ? '"' : '';
+            return sprintf("%s=%s%s%s,", $databaseField, $doubleQuotes, $value, $doubleQuotes);
+        }
+        return '';
+    }
 }
