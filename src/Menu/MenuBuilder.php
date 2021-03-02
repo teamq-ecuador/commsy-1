@@ -12,6 +12,7 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use App\Services\LegacyEnvironment;
 use App\Utils\UserService;
 use App\Services\InvitationsService;
+use Symfony\Component\Security\Core\Security;
 
 class MenuBuilder
 {
@@ -34,6 +35,10 @@ class MenuBuilder
      * @var PortalRepository
      */
     private $portalRepository;
+    /**
+     * @var Security
+     */
+    private $security;
 
     /**
     * @param FactoryInterface $factory
@@ -45,7 +50,8 @@ class MenuBuilder
         UserService $userService,
         AuthorizationCheckerInterface $authorizationChecker,
         InvitationsService $invitationsService,
-        PortalRepository $portalRepository)
+        PortalRepository $portalRepository,
+        Security $security)
     {
         $this->factory = $factory;
         $this->roomService = $roomService;
@@ -54,15 +60,16 @@ class MenuBuilder
         $this->authorizationChecker = $authorizationChecker;
         $this->invitationsService = $invitationsService;
         $this->portalRepository = $portalRepository;
+        $this->security = $security;
     }
 
     public function createAccountMenu(RequestStack $requestStack)
     {
        // create profile
         $currentStack = $requestStack->getCurrentRequest();
+        $user = $this->security->getUser();
         $currentUser = $this->legacyEnvironment->getCurrentUser();
-        $currentPortal = $this->legacyEnvironment->getCurrentPortalItem();
-        $authSourceItem = $currentPortal->getAuthSource($currentUser->getAuthSource());
+        $authSourceItem = $user->getAuthSource();
 
         $menu = $this->factory->createItem('root');
 
@@ -81,7 +88,7 @@ class MenuBuilder
             ])
             ->setExtra('translation_domain', 'menu');
 
-            if((isset($authSourceItem) && $authSourceItem->allowChangePassword()) || $currentUser->isRoot()) {
+            if((isset($authSourceItem) && $authSourceItem->isChangePassword()) || $currentUser->isRoot()) {
                 $menu->addChild('changePassword', [
                     'route' => 'app_profile_changepassword',
                     'routeParameters' => [

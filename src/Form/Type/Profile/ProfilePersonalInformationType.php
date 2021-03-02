@@ -10,6 +10,7 @@ use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Security\Core\Security;
 use Symfony\Component\Validator\Constraints\NotBlank;
 
 use App\Services\LegacyEnvironment;
@@ -21,11 +22,16 @@ class ProfilePersonalInformationType extends AbstractType
     private $legacyEnvironment;
 
     private $userItem;
+    /**
+     * @var Security
+     */
+    private $security;
 
-    public function __construct(EntityManagerInterface $em, LegacyEnvironment $legacyEnvironment)
+    public function __construct(EntityManagerInterface $em, LegacyEnvironment $legacyEnvironment, Security $security)
     {
         $this->em = $em;
         $this->legacyEnvironment = $legacyEnvironment->getEnvironment();
+        $this->security = $security;
     }
 
     /**
@@ -38,13 +44,10 @@ class ProfilePersonalInformationType extends AbstractType
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        $userManager = $this->legacyEnvironment->getUserManager();
-        $this->userItem = $userManager->getItem($options['itemId']);
+        $user = $this->security->getUser();
+        $authSource = $user->getAuthSource();
 
-        $authSourceManager = $this->legacyEnvironment->getAuthSourceManager();
-        $authSourceItem = $authSourceManager->getItem($this->userItem->getAuthSource());
-
-        if($authSourceItem->allowChangeUserID()) {
+        if($user && $authSource->isChangeUsername()) {
             $disabled = false;
         } else {
             $disabled = true;
