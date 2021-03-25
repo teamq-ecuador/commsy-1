@@ -38,10 +38,6 @@ include_once('functions/date_functions.php');
  */
 include_once('classes/cs_list.php');
 
-/** cs_set is needed for caching user items
-*/
-include_once('classes/cs_set.php');
-
 
 /** class for database connection to the database table "user"
  * this class implements a database manager for the table "user"
@@ -834,6 +830,10 @@ class cs_user_manager extends cs_manager {
            $query .= ' AND ' . $this->addDatabasePrefix($this->_db_table) . '.modification_date >= "' . $this->modificationNewerThenLimit->format('Y-m-d H:i:s') . '"';
        }
 
+       if ($this->creationNewerThenLimit) {
+           $query .= ' AND ' . $this->addDatabasePrefix($this->_db_table) . '.creation_date >= "' . $this->creationNewerThenLimit->format('Y-m-d H:i:s') . '"';
+       }
+
        if ($this->excludedIdsLimit) {
            $query .= ' AND ' . $this->addDatabasePrefix($this->_db_table) . '.item_id NOT IN (' . implode(", ", encode(AS_DB, $this->excludedIdsLimit)) . ')';
        }
@@ -1330,12 +1330,22 @@ class cs_user_manager extends cs_manager {
    * @param cs_user_item the user item to be deleted
    */
    function delete ($item_id) {
+       /** @var \cs_user_item $user_item */
       $user_item = $this->getItem($item_id);
       if ( $this->_environment->inPortal() ) {
          if ( isset($user_item)
               and !empty($user_item)
               and $user_item->getContextID() == $this->_environment->getCurrentContextID()
          ) {
+            // fire an AccountDeletedEvent (which will e.g. trigger deletion of the user's saved searches)
+            global $symfonyContainer;
+
+            /** @var \Symfony\Component\EventDispatcher\EventDispatcher $eventDispatcher */
+            $eventDispatcher = $symfonyContainer->get('event_dispatcher');
+
+            $accountDeletedEvent = new \App\Event\AccountDeletedEvent($user_item);
+            $eventDispatcher->dispatch($accountDeletedEvent, \App\Event\AccountDeletedEvent::class);
+
             // delete private room - part I
             $private_room_manager = $this->_environment->getPrivateRoomManager();
             $own_room = $private_room_manager->getRelatedOwnRoomForUser($user_item,$this->_environment->getCurrentPortalID());
@@ -1347,6 +1357,7 @@ class cs_user_manager extends cs_manager {
                   $delete_own_room = false;
                }
             }
+
             // delete related user in project rooms and community rooms and private room
             $user_list = $user_item->getRelatedUserList();
             if ( !$user_list->isEmpty() ) {
@@ -1608,7 +1619,12 @@ class cs_user_manager extends cs_manager {
         $room_item_ids[] = $own_room->getItemID();
         unset($own_room);
      }
-     # private room
+
+     # user rooms
+     $relatedUserrooms = $old_item->getRelatedUserroomsList();
+     foreach ($relatedUserrooms as $userroom) {
+           $room_item_ids[] = $userroom->getItemID();
+     }
 
      $update  = "UPDATE ".$this->addDatabasePrefix("user")." SET ";
      $update .= " user_id = '".encode(AS_DB,$new)."',";
@@ -1964,7 +1980,7 @@ class cs_user_manager extends cs_manager {
 		}
 		return $user_array;
 	}
-	
+
 	public function getAllUserItemArray($uid){
 		$user = NULL;
 		$user_array = array();
@@ -1987,7 +2003,7 @@ class cs_user_manager extends cs_manager {
      * @param int[] $contextIds List of context ids
      * @param array Limits for buzzwords / categories
      * @param int $size Number of items to get
-     * @param \DateTime $newerThen The oldest modification date to consider
+     * @param \DateTime $newerThen The oldest creation date to consider
      * @param int[] $excludedIds Ids to exclude
      *
      * @return \cs_list
@@ -2000,7 +2016,16 @@ class cs_user_manager extends cs_manager {
             return new cs_list();
         }
 
-        parent::setGenericNewestItemsLimits($contextIds, $limits, $newerThen, $excludedIds);
+        // NOTE: we ignore the modificationNewerThenLimit here and instead set creationNewerThenLimit below
+        parent::setGenericNewestItemsLimits($contextIds, $limits, null, $excludedIds);
+
+        // NOTE: in case of user items (and opposed to all other item types), we consider the creation date (instead
+        // of the modification date) when assembling lists of "newest items"; a user item gets created when a person
+        // requests a room membership, and only in this case the user item will get included in any "newest items" feed;
+        // this is done in order to avoid flooding the feeds with user items that were modified just for technical reasons
+        if ($newerThen) {
+            $this->setCreationNewerThenLimit($newerThen);
+        }
 
         if ($size > 0) {
             $this->setIntervalLimit(0, $size);

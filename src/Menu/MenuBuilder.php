@@ -351,20 +351,22 @@ class MenuBuilder
             }
 
             // delete
-            $menu->addChild('Delete', [
-                'label' => 'delete',
-                'route' => 'app_settings_delete',
-                'routeParameters' => [
-                    'roomId' => $roomId,
-                ],
-                'extras' => [
-                    'icon' => 'uk-icon-trash uk-icon-small uk-icon-justify'
-                ],
-            ])
-            ->setAttributes([
-                'class' => 'uk-button-danger',
-            ])
-            ->setExtra('translation_domain', 'menu');
+            if ($this->roomService->getRoomItem($roomId)->getType() !== 'userroom') {
+                $menu->addChild('Delete', [
+                    'label' => 'delete',
+                    'route' => 'app_settings_delete',
+                    'routeParameters' => [
+                        'roomId' => $roomId,
+                    ],
+                    'extras' => [
+                        'icon' => 'uk-icon-trash uk-icon-small uk-icon-justify'
+                    ],
+                ])
+                    ->setAttributes([
+                        'class' => 'uk-button-danger',
+                    ])
+                    ->setExtra('translation_domain', 'menu');
+            }
 
             $menu->addChild(' ', ['uri' => '#']);
             $menu->addChild('room', array(
@@ -396,6 +398,15 @@ class MenuBuilder
             ])
             ->setExtra('translation_domain', 'menu');
 
+            // appearance
+            $menu->addChild('Appearance', [
+                'label' => 'appearance',
+                'route' => 'app_portalsettings_appearance',
+                'routeParameters' => ['portalId' => $portalId],
+                'extras' => ['icon' => 'paint-bucket'],
+            ])
+            ->setExtra('translation_domain', 'menu');
+
             // support
             $menu->addChild('Support', [
                 'label' => 'Support requests',
@@ -415,9 +426,9 @@ class MenuBuilder
             ->setExtra('translation_domain', 'portal');
 
             // terms
-            $menu->addChild('Terms', [
-                'label' => 'terms',
-                'route' => 'app_portalsettings_terms',
+            $menu->addChild('Contents', [
+                'label' => 'contents',
+                'route' => 'app_portalsettings_contents',
                 'routeParameters' => ['portalId' => $portalId],
                 'extras' => ['icon' => 'file-text']
             ])
@@ -516,7 +527,7 @@ class MenuBuilder
             // auth source
             $menu->addChild('Auth', [
                 'label' => 'Auth',
-                'route' => 'app_portalsettings_authcommsy',
+                'route' => 'app_portalsettings_authlocal',
                 'routeParameters' => ['portalId' => $portalId],
                 'extras' => ['icon' => 'credit-card']
             ])

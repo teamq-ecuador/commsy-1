@@ -69,7 +69,7 @@ class UserService
         \cs_user_item $creator = null
     ): ?\cs_user_item
     {
-        // TODO: use a facade/factory to create a new room (also compare with UserBuilder->addUserToRooms())
+        // TODO: use a facade/factory to create a new room (also compare with UserCreatorFacade->addUserToRooms())
 
         if (!isset($sourceUser) || empty($contextID)) {
             return null;
@@ -405,6 +405,10 @@ class UserService
         $searchableRoomList->addList($groupRoomList);
         $searchableRoomList->addList($userRoomList);
 
+        // add private room
+        $privateRoomItem = $userItem->getOwnRoom();
+        $searchableRoomList->add($privateRoomItem);
+
         return $searchableRoomList->to_array();
     }
 
@@ -421,9 +425,9 @@ class UserService
         return $moderatorList->to_array();
     }
 
-    public function showNoNotActivatedEntries()
+    public function hideDeactivatedEntries()
     {
-        $this->userManager->showNoNotActivatedEntries();
+        $this->userManager->setInactiveEntriesLimit(\cs_manager::SHOW_ENTRIES_ONLY_ACTIVATED);
     }
 
     public function showUserStatus($status)

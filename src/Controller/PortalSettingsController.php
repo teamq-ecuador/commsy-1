@@ -8,8 +8,10 @@ use App\Entity\AccountIndexSendMail;
 use App\Entity\AccountIndexSendMergeMail;
 use App\Entity\AccountIndexSendPasswordMail;
 use App\Entity\AccountIndexUser;
-use App\Entity\AuthShibboleth;
 use App\Entity\AuthSource;
+use App\Entity\AuthSourceLdap;
+use App\Entity\AuthSourceLocal;
+use App\Entity\AuthSourceShibboleth;
 use App\Entity\License;
 use App\Entity\Portal;
 use App\Entity\PortalUserAssignWorkspace;
@@ -17,39 +19,46 @@ use App\Entity\PortalUserChangeStatus;
 use App\Entity\PortalUserEdit;
 use App\Entity\Room;
 use App\Entity\RoomCategories;
+use App\Entity\Server;
 use App\Entity\Translation;
 use App\Event\CommsyEditEvent;
 use App\Form\DataTransformer\UserTransformer;
+use App\Form\Type\Portal\AccessibilityType;
 use App\Form\Type\Portal\AccountIndexDeleteUserType;
 use App\Form\Type\Portal\AccountIndexDetailAssignWorkspaceType;
 use App\Form\Type\Portal\AccountIndexDetailChangePasswordType;
 use App\Form\Type\Portal\AccountIndexDetailChangeStatusType;
 use App\Form\Type\Portal\AccountIndexDetailEditType;
 use App\Form\Type\Portal\AccountIndexDetailType;
+use App\Form\Type\Portal\AccountIndexSendMailType;
 use App\Form\Type\Portal\AccountIndexSendMergeMailType;
 use App\Form\Type\Portal\AccountIndexSendPasswordMailType;
 use App\Form\Type\Portal\AccountIndexType;
-use App\Form\Type\Portal\AnnouncementsType;
-use App\Form\Type\Portal\AuthCommsyType;
 use App\Form\Type\Portal\AuthLdapType;
+use App\Form\Type\Portal\AuthLocalType;
 use App\Form\Type\Portal\AuthShibbolethType;
 use App\Form\Type\Portal\CommunityRoomsCreationType;
+use App\Form\Type\Portal\DataPrivacyType;
 use App\Form\Type\Portal\GeneralType;
+use App\Form\Type\Portal\ImpressumType;
 use App\Form\Type\Portal\InactiveType;
-use App\Form\Type\Portal\LicenseType;
 use App\Form\Type\Portal\LicenseSortType;
+use App\Form\Type\Portal\LicenseType;
 use App\Form\Type\Portal\MailtextsType;
 use App\Form\Type\Portal\MandatoryAssignmentType;
+use App\Form\Type\Portal\PortalAnnouncementsType;
+use App\Form\Type\Portal\PortalAppearanceType;
 use App\Form\Type\Portal\PortalhomeType;
 use App\Form\Type\Portal\PrivacyType;
 use App\Form\Type\Portal\ProjectRoomsCreationType;
 use App\Form\Type\Portal\RoomCategoriesType;
+use App\Form\Type\Portal\ServerAnnouncementsType;
+use App\Form\Type\Portal\ServerAppearanceType;
 use App\Form\Type\Portal\SupportRequestsType;
 use App\Form\Type\Portal\SupportType;
 use App\Form\Type\Portal\TermsType;
 use App\Form\Type\Portal\TimePulsesType;
 use App\Form\Type\Portal\TimePulseTemplateType;
-use App\Form\Type\Portal\AccountIndexSendMailType;
 use App\Form\Type\TranslationType;
 use App\Model\TimePulseTemplate;
 use App\Services\LegacyEnvironment;
@@ -115,6 +124,54 @@ class PortalSettingsController extends AbstractController
 
         return [
             'form' => $form->createView(),
+        ];
+    }
+
+    /**
+     * @Route("/portal/{portalId}/settings/appearance")
+     * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
+     * @IsGranted("PORTAL_MODERATOR", subject="portal")
+     * @Template
+     * @param Portal $portal
+     * @param Request $request
+     */
+    public function appearance(Portal $portal, Request $request, EntityManagerInterface $entityManager)
+    {
+        $portalForm = $this->createForm(PortalAppearanceType::class, $portal);
+        $portalForm->handleRequest($request);
+        if ($portalForm->isSubmitted() && $portalForm->isValid()) {
+            if ($portalForm->getClickedButton()->getName() === 'save') {
+                $entityManager->persist($portal);
+                $entityManager->flush();
+
+                return $this->redirectToRoute('app_portalsettings_appearance', [
+                    'portalId' => $portal->getId(),
+                    'tab' => 'portal',
+                ]);
+            }
+        }
+
+        $server = $entityManager->getRepository(Server::class)->getServer();
+        $serverForm = $this->createForm(ServerAppearanceType::class, $server);
+        if ($this->isGranted('ROOT')) {
+            $serverForm->handleRequest($request);
+            if ($serverForm->isSubmitted() && $serverForm->isValid()) {
+                if ($serverForm->getClickedButton()->getName() === 'save') {
+                    $entityManager->persist($server);
+                    $entityManager->flush();
+
+                    return $this->redirectToRoute('app_portalsettings_appearance', [
+                        'portalId' => $portal->getId(),
+                        'tab' => 'server',
+                    ]);
+                }
+            }
+        }
+
+        return [
+            'portalForm' => $portalForm->createView(),
+            'serverForm' => $serverForm->createView(),
+            'tab' => $request->query->has('tab') ? $request->query->get('tab') : 'portal',
         ];
     }
 
@@ -197,8 +254,12 @@ class PortalSettingsController extends AbstractController
      * @param EntityManagerInterface $entityManager
      * @param RoomService $roomService
      */
-    public function roomCreation(Portal $portal, Request $request, EntityManagerInterface $entityManager, RoomService $roomService)
-    {
+    public function roomCreation(
+        Portal $portal,
+        Request $request,
+        EntityManagerInterface $entityManager,
+        RoomService $roomService
+    ) {
         // community rooms creation form
         $templateChoices = array_merge(['No template' => '-1'], $roomService->getAvailableTemplates(CS_COMMUNITY_TYPE));
 
@@ -257,8 +318,7 @@ class PortalSettingsController extends AbstractController
         RoomCategoriesService $roomCategoriesService,
         EventDispatcherInterface $dispatcher,
         EntityManagerInterface $entityManager
-    )
-    {
+    ) {
         $editForm = null;
         $portalId = $portal->getId();
         $repository = $entityManager->getRepository(RoomCategories::class);
@@ -280,9 +340,11 @@ class PortalSettingsController extends AbstractController
             if ($clickedButtonName === 'new' || $clickedButtonName === 'update') {
                 $entityManager->persist($roomCategory);
                 $entityManager->flush();
-            } else if ($clickedButtonName === 'delete') {
-                $roomCategoriesService->removeRoomCategory($roomCategory);
-                $entityManager->flush();
+            } else {
+                if ($clickedButtonName === 'delete') {
+                    $roomCategoriesService->removeRoomCategory($roomCategory);
+                    $entityManager->flush();
+                }
             }
 
             return $this->redirectToRoute('app_portalsettings_roomcategories', [
@@ -326,7 +388,7 @@ class PortalSettingsController extends AbstractController
     }
 
     /**
-     * @Route("/portal/{portalId}/settings/authLdap")
+     * @Route("/portal/{portalId}/settings/auth/ldap")
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
@@ -336,228 +398,118 @@ class PortalSettingsController extends AbstractController
     public function authLdap(
         Portal $portal,
         Request $request,
-        EntityManagerInterface $entityManager,
-        LegacyEnvironment $environment
-    )
-    {
-        $defaultData = [
-            'typeChoice' => 'ldap',
-            'default' => 0,
-            'imsDefault' => 0,
-            'available' => 1,
-        ];
+        EntityManagerInterface $entityManager
+    ) {
+        /*
+         * Try to find an existing shibboleth auth source or create an empty one. We assume
+         * that there is only one auth source per type.
+         */
+        $authSources = $portal->getAuthSources();
 
-        $portalId = $portal->getId();
-        $authSourceRepo = $entityManager->getRepository(AuthSource::class);
-        $existingAuthSources = $authSourceRepo->findByPortalAndTypeOriginName($portal, 'ldap');
+        /** @var AuthSourceShibboleth $ldapSource */
+        $ldapSource = $authSources->filter(function (AuthSource $authSource) {
+            return $authSource instanceof AuthSourceLdap;
+        })->first();
 
-        if (!is_null($existingAuthSources) && sizeof($existingAuthSources) > 0) {
-            $existingLdapSource = $existingLdapSource = $existingAuthSources[0];
-            if (is_null($existingLdapSource->getExtras())) {
-                $existingLdapSource->setExtras([]);
-            }
-            $defaultData['title'] = $existingLdapSource->getTitle();
-            $defaultData['default'] = $existingLdapSource->isDefault();
-            $defaultData['available'] = $existingLdapSource->getAvailable();
-            $defaultData['serverAddress'] = $existingLdapSource->getServerAddress();
-            $defaultData['userIdLdapField'] = $existingLdapSource->getUserIdLdapField();
-            $defaultData['userMayCreateRooms'] = $existingLdapSource->getCreateRoom();
-            $defaultData['path'] = $existingLdapSource->getPath();
-            $defaultData['userName'] = $existingLdapSource->getUserName();
-            $defaultData['password'] = $existingLdapSource->getPassword();
-            $defaultData['changePasswordURL'] = $existingLdapSource->getChangePasswordURL();
-            $defaultData['encryption'] = $existingLdapSource->getEncryption();
-            $defaultData['contactTelephone'] = $existingLdapSource->getContactTelephone();
-            $defaultData['contactMail'] = $existingLdapSource->getContactMail();
-            $defaultData['changePasswordURL'] = $existingLdapSource->getChangePasswordURL();
-            $existingLdapSource->setPortal($portal);
+        if ($ldapSource === false) {
+            // TODO: This could be moved to a creational pattern
+            $ldapSource = new AuthSourceLdap();
+            $ldapSource->setPortal($portal);
         }
 
-        $ldapForm = $this->createForm(AuthLdapType::class, $defaultData);
-
+        $ldapForm = $this->createForm(AuthLdapType::class, $ldapSource);
         $ldapForm->handleRequest($request);
 
-        if ($ldapForm->isSubmitted()) {
-            $formData = $ldapForm->getData();
+        if ($ldapForm->isSubmitted() && $ldapForm->isValid()) {
+            // handle switch to other auth types
             $clickedButtonName = $ldapForm->getClickedButton()->getName();
             if ($clickedButtonName === 'type') {
-                $choice = $formData['typeChoice'];
-                switch ($choice) {
-                    case 'ldap':
-                        return $this->redirectToRoute('app_portalsettings_authldap', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
-                    case 'shibboleth':
-                        return $this->redirectToRoute('app_portalsettings_authshibboleth', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
-                    case 'commsy':
-                        return $this->redirectToRoute('app_portalsettings_authcommsy', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
+                $typeSwitch = $ldapForm->get('typeChoice')->getData();
+                return $this->generateRedirectForAuthType($typeSwitch, $portal);
+            }
+
+            if ($clickedButtonName === 'save') {
+                if ($ldapSource->isDefault()) {
+                    $authSources->map(function (AuthSource $authSource) use ($ldapSource, $entityManager) {
+                        $authSource->setDefault(false);
+                        $entityManager->persist($authSource);
+                    });
+                    $ldapSource->setDefault(true);
                 }
-            } else if ($clickedButtonName == 'save' && $ldapForm->isValid()) {
-                $newAuthSource = new AuthSource();
-                if ($existingAuthSources) {
-                    $newAuthSource = $existingAuthSources[0];
-                }
-                if (is_null($newAuthSource->getExtras())) {
-                    $newAuthSource->setExtras([]);
-                }
-                $newAuthSource->setTitle($formData['title']);
-                $newAuthSource->setDefault($formData['default']);
-                $newAuthSource->setAvailable($formData['available']);
-                $newAuthSource->setServerAddress($formData['serverAddress']);
-                $newAuthSource->setUserIdLdapField($formData['userIdLdapField']);
-                $newAuthSource->setCreateRoom($formData['userMayCreateRooms']);
-                $newAuthSource->setPath($formData['path']);
-                $newAuthSource->setUsername($formData['userName']);
-                $newAuthSource->setPassword($formData['password']);
-                $newAuthSource->setEncryption($formData['encryption']);
-                $newAuthSource->setContactTelephone($formData['contactTelephone']);
-                $newAuthSource->setContactMail($formData['contactMail']);
-                $newAuthSource->setChangePasswordURL($formData['changePasswordURL']);
 
-                $newAuthSource->setSourceOriginName('ldap');
-                $newAuthSource->setType('local');
-                $newAuthSource->setEnabled(true);
-                $newAuthSource->setAddAccount(false);
-                $newAuthSource->setChangeUsername(false);
-                $newAuthSource->setDeleteAccount(false);
-                $newAuthSource->setChangeUserdata(false);
-                $newAuthSource->setChangePassword(false);
-
-
-                $newAuthSource->setPortal($portal);
-
-                $entityManager->persist($newAuthSource);
+                $entityManager->persist($ldapSource);
                 $entityManager->flush();
             }
         }
 
         return [
             'form' => $ldapForm->createView(),
-            'portalId' => $portalId,
         ];
     }
 
     /**
-     * @Route("/portal/{portalId}/settings/authCommsy")
+     * @Route("/portal/{portalId}/settings/auth/local")
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
      * @param Portal $portal
      * @param Request $request
      */
-    public function authCommsy(
+    public function authLocal(
         Portal $portal,
         Request $request,
-        EntityManagerInterface $entityManager,
-        LegacyEnvironment $environment
-    )
-    {
-        $defaultData = [
-            'typeChoice' => 'commsy',
-            'default' => 0,
-            'imsDefault' => 0,
-            'available' => 1,
-        ];
+        EntityManagerInterface $entityManager
+    ) {
+        /*
+         * Try to find an existing local auth source or create an empty one. We assume
+         * that there is only one auth source per type.
+         */
+        $authSources = $portal->getAuthSources();
 
-        $portalId = $portal->getId();
-        $authSourceRepo = $entityManager->getRepository(AuthSource::class);
-        $existingAuthSources = $authSourceRepo->findByPortalAndTypeOriginName($portal, 'commsy');
+        /** @var AuthSourceShibboleth $localSource */
+        $localSource = $authSources->filter(function (AuthSource $authSource) {
+            return $authSource instanceof AuthSourceLocal;
+        })->first();
 
-        if (!is_null($existingAuthSources) && sizeof($existingAuthSources) > 0) {
-            $existingCommsySource = $existingCommsySource = $existingAuthSources[0];
-            if (is_null($existingCommsySource->getExtras())) {
-                $existingCommsySource->setExtras([]);
-            }
-            $defaultData['title'] = $existingCommsySource->getTitle();
-            $defaultData['default'] = $existingCommsySource->isDefault();
-            $defaultData['available'] = $existingCommsySource->getAvailable();
-            $defaultData['mailRegEx'] = $existingCommsySource->getMailRegEx();
-            $defaultData['default'] = $existingCommsySource->isDefault();
-            $defaultData['changeUserID'] = $existingCommsySource->isChangeUserID();
-            $defaultData['changeIdentification'] = $existingCommsySource->isChangeIdentification();
-            $defaultData['changePassword'] = $existingCommsySource->isChangePassword();
-            $defaultData['createIdentifiaction'] = $existingCommsySource->getCreateIdentification();
-            $defaultData['deleteIdentifiaction'] = $existingCommsySource->isDeleteAccount();
-            $defaultData['userMayCreateRooms'] = $existingCommsySource->getCreateRoom();
-
-            $existingCommsySource->setPortal($portal);
+        if ($localSource === false) {
+            // TODO: This could be moved to a creational pattern
+            $localSource = new AuthSourceLocal();
+            $localSource->setPortal($portal);
         }
 
-        $authCommsyForm = $this->createForm(AuthCommsyType::class, $defaultData);
-        $authCommsyForm->handleRequest($request);
+        $localForm = $this->createForm(AuthLocalType::class, $localSource);
+        $localForm->handleRequest($request);
 
-        if ($authCommsyForm->isSubmitted() && $authCommsyForm->isValid()) {
-            $formData = $authCommsyForm->getData();
-            $clickedButtonName = $authCommsyForm->getClickedButton()->getName();
-            if ($clickedButtonName == 'save' && $authCommsyForm->isValid()) {
-                $newAuthSource = new AuthSource();
-                if ($existingAuthSources) {
-                    $newAuthSource = $existingAuthSources[0];
+        if ($localForm->isSubmitted() && $localForm->isValid()) {
+            // handle switch to other auth types
+            $clickedButtonName = $localForm->getClickedButton()->getName();
+            if ($clickedButtonName === 'type') {
+                $typeSwitch = $localForm->get('typeChoice')->getData();
+                return $this->generateRedirectForAuthType($typeSwitch, $portal);
+            }
+
+            if ($clickedButtonName === 'save') {
+                if ($localSource->isDefault()) {
+                    $authSources->map(function (AuthSource $authSource) use ($localSource, $entityManager) {
+                        $authSource->setDefault(false);
+                        $entityManager->persist($authSource);
+                    });
+                    $localSource->setDefault(true);
                 }
-                if (is_null($newAuthSource->getExtras())) {
-                    $newAuthSource->setExtras([]);
-                }
-                $newAuthSource->setTitle($formData['title']);
-                $newAuthSource->setDefault($formData['default']);
-                $newAuthSource->setAvailable($formData['available']);
-                $newAuthSource->setDefault($formData['default']);
-                $newAuthSource->setChangeUserID($formData['changeUserID']);
-                $newAuthSource->setChangeIdentification($formData['changeIdentification']);
-                $newAuthSource->setChangePassword($formData['changePassword']);
-                $newAuthSource->setCreateIdentification($formData['createIdentifiaction']);
-                $newAuthSource->setDeleteAccount($formData['deleteIdentifiaction']);
-                $newAuthSource->setCreateRoom($formData['userMayCreateRooms']);
-                $newAuthSource->setMailRegEx($formData['mailRegEx']);
 
-                $newAuthSource->setSourceOriginName('commsy');
-                $newAuthSource->setType('local');
-
-                $newAuthSource->setEnabled(true);
-                $newAuthSource->setAddAccount(false);
-                $newAuthSource->setChangeUsername(false);
-                $newAuthSource->setChangeUserdata(false);
-
-                $newAuthSource->setPortal($portal);
-
-                $entityManager->persist($newAuthSource);
+                $entityManager->persist($localSource);
                 $entityManager->flush();
-            } else if ($clickedButtonName === 'type') {
-                $choice = $formData['typeChoice'];
-                switch ($choice) {
-                    case 'ldap':
-                        return $this->redirectToRoute('app_portalsettings_authldap', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
-                    case 'commsy':
-                        return $this->redirectToRoute('app_portalsettings_authcommsy', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
-                    case 'shibboleth':
-                        return $this->redirectToRoute('app_portalsettings_authshibboleth', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
-                }
             }
         }
 
         return [
-            'form' => $authCommsyForm->createView(),
-            'portalId' => $portalId,
+            'form' => $localForm->createView(),
+            'portal' => $portal,
         ];
     }
 
     /**
-     * @Route("/portal/{portalId}/settings/authShibboleth")
+     * @Route("/portal/{portalId}/settings/auth/shib")
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
@@ -567,107 +519,52 @@ class PortalSettingsController extends AbstractController
     public function authShibboleth(
         Portal $portal,
         Request $request,
-        EntityManagerInterface $entityManager,
-        LegacyEnvironment $environment
-    )
-    {
-        $defaultData = [
-            'typeChoice' => 'shibboleth',
-            'default' => 0,
-            'imsDefault' => 0,
-            'available' => 1,
-        ];
+        EntityManagerInterface $entityManager
+    ) {
+        /*
+         * Try to find an existing shibboleth auth source or create an empty one. We assume
+         * that there is only one auth source per type.
+         */
+        $authSources = $portal->getAuthSources();
 
-        $portalId = $portal->getId();
+        /** @var AuthSourceShibboleth $shibSource */
+        $shibSource = $authSources->filter(function (AuthSource $authSource) {
+            return $authSource instanceof AuthSourceShibboleth;
+        })->first();
 
-        $authSourceRepo = $entityManager->getRepository(AuthSource::class);
-        $existingAuthSources = $authSourceRepo->findByPortalAndTypeOriginName($portal, 'shibboleth');
-
-        if (!is_null($existingAuthSources) && sizeof($existingAuthSources) > 0) {
-            $existingShibbolethSource = $existingShibbolethSource = $existingAuthSources[0];
-            $defaultData['title'] = $existingShibbolethSource->getTitle();
-            $defaultData['default'] = $existingShibbolethSource->isDefault();
-            $defaultData['available'] = $existingShibbolethSource->getAvailable();
-            $defaultData['directLogin'] = $existingShibbolethSource->getDirectLogin();
-            $defaultData['userMayCreateRooms'] = $existingShibbolethSource->getCreateRoom();
-            $defaultData['sessionInitiatorURL'] = $existingShibbolethSource->getSessionInitiatorURL();
-            $defaultData['identityProviderUpdates'] = $existingShibbolethSource->isIdentityProviderUpdates();
-            $defaultData['sessionLogoutURL'] = $existingShibbolethSource->getSessionLogoutURL();
-            $defaultData['changePasswordURL'] = $existingShibbolethSource->getChangePasswordURL();
-            $defaultData['userName'] = $existingShibbolethSource->getUserName();
-            $defaultData['firstName'] = $existingShibbolethSource->getFirstName();
-            $defaultData['lastName'] = $existingShibbolethSource->getLastName();
-            $defaultData['mail'] = $existingShibbolethSource->getMail();
-            $defaultData['contactTelephone'] = $existingShibbolethSource->getContactTelephone();
-            $defaultData['contactMail'] = $existingShibbolethSource->getContactMail();
-            $defaultData['changePasswordURL'] = $existingShibbolethSource->getChangePasswordURL();
-            $existingShibbolethSource->setPortal($portal);
+        if ($shibSource === false) {
+            // TODO: This could be moved to a creational pattern
+            $shibSource = new AuthSourceShibboleth();
+            $shibSource->setPortal($portal);
         }
 
-        $authShibbolethForm = $this->createForm(AuthShibbolethType::class, $defaultData);
+        $authShibbolethForm = $this->createForm(AuthShibbolethType::class, $shibSource);
         $authShibbolethForm->handleRequest($request);
 
-        if ($authShibbolethForm->isSubmitted()) {
-            $formData = $authShibbolethForm->getData();
+        if ($authShibbolethForm->isSubmitted() && $authShibbolethForm->isValid()) {
+            // handle switch to other auth types
             $clickedButtonName = $authShibbolethForm->getClickedButton()->getName();
             if ($clickedButtonName === 'type') {
-                $choice = $formData['typeChoice'];
-                switch ($choice) {
-                    case 'ldap':
-                        return $this->redirectToRoute('app_portalsettings_authldap', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
-                    case 'shibboleth':
-                        return $this->redirectToRoute('app_portalsettings_authshibboleth', [
-                            'portalId' => $portalId,
-                        ]);
-                        break;
-                    case 'commsy':
-                        return $this->redirectToRoute('app_portalsettings_authcommsy', [
-                            'portalId' => $portalId,
-                        ]);
+                $typeSwitch = $authShibbolethForm->get('typeChoice')->getData();
+                return $this->generateRedirectForAuthType($typeSwitch, $portal);
+            }
+
+            if ($clickedButtonName === 'save') {
+                if ($shibSource->isDefault()) {
+                    $authSources->map(function (AuthSource $authSource) use ($shibSource, $entityManager) {
+                        $authSource->setDefault(false);
+                        $entityManager->persist($authSource);
+                    });
+                    $shibSource->setDefault(true);
                 }
-            } else if ($clickedButtonName == 'save' && $authShibbolethForm->isValid()) {
 
-                $newAuthSource = new AuthSource();
-                if ($existingAuthSources) {
-                    $newAuthSource = $existingAuthSources[0];
-                }
-                $newAuthSource->setTitle($formData['title']);
-                $newAuthSource->setDefault($formData['default']);
-                $newAuthSource->setAvailable($formData['available']);
-                $newAuthSource->setDirectLogin($formData['directLogin']);
-                $newAuthSource->setSessionInitiatorURL($formData['sessionInitiatorURL']);
-                $newAuthSource->setIdentityProviderUpdates($formData['identityProviderUpdates']);
-                $newAuthSource->setChangePasswordURL($formData['changePasswordURL']);
-                $newAuthSource->setSessionLogoutURL($formData['sessionLogoutURL']);
-                $newAuthSource->setCreateRoom($formData['userMayCreateRooms']);
-                $newAuthSource->setUsername($formData['userName']);
-                $newAuthSource->setFirstName($formData['firstName']);
-                $newAuthSource->setLastName($formData['lastName']);
-                $newAuthSource->setMail($formData['mail']);
-                $newAuthSource->setContactTelephone($formData['contactTelephone']);
-                $newAuthSource->setContactMail($formData['contactMail']);
-                $newAuthSource->setChangePasswordURL($formData['changePasswordURL']);
-                $newAuthSource->setPortal($portal);
-
-                $newAuthSource->setType('local');
-                $newAuthSource->setEnabled(true);
-                $newAuthSource->setAddAccount(false);
-                $newAuthSource->setChangeUsername(false);
-                $newAuthSource->setDeleteAccount(false);
-                $newAuthSource->setChangeUserdata(false);
-                $newAuthSource->setChangePassword(false);
-
-                $entityManager->persist($newAuthSource);
+                $entityManager->persist($shibSource);
                 $entityManager->flush();
             }
         }
 
         return [
             'form' => $authShibbolethForm->createView(),
-            'portalId' => $portalId,
         ];
     }
 
@@ -687,14 +584,13 @@ class PortalSettingsController extends AbstractController
         Request $request,
         EntityManagerInterface $entityManager,
         LegacyEnvironment $environment
-    )
-    {
+    ) {
         $defaultData = [
             'userIndexFilterChoice' => -1,
             'contentGerman' => '',
             'contentEnglish' => '',
-            'resetContentGerman' => False,
-            'resetContentEnglish' => False,
+            'resetContentGerman' => false,
+            'resetContentEnglish' => false,
         ];
 
         $roomItem = $environment->getEnvironment()->getCurrentContextItem();
@@ -795,8 +691,7 @@ class PortalSettingsController extends AbstractController
         RoomService $roomService,
         EventDispatcherInterface $dispatcher,
         LegacyEnvironment $environment
-    )
-    {
+    ) {
         $portalId = $portal->getId();
 
         $em = $this->getDoctrine()->getManager();
@@ -965,8 +860,7 @@ class PortalSettingsController extends AbstractController
         Request $request,
         TimePulsesService $timePulsesService,
         EntityManagerInterface $entityManager
-    )
-    {
+    ) {
         // time pulses options form
         $optionsForm = $this->createForm(TimePulsesType::class, $portal);
 
@@ -1013,8 +907,10 @@ class PortalSettingsController extends AbstractController
 
             if ($clickedButtonName === 'new' || $clickedButtonName === 'update') {
                 $timePulsesService->updateTimePulseTemplate($portal, $timePulseTemplate);
-            } else if ($clickedButtonName === 'delete') {
-                $timePulsesService->removeTimePulseTemplate($portal, $timePulseTemplateId);
+            } else {
+                if ($clickedButtonName === 'delete') {
+                    $timePulsesService->removeTimePulseTemplate($portal, $timePulseTemplateId);
+                }
             }
 
             if ($clickedButtonName === 'new' || $clickedButtonName === 'update' || $clickedButtonName === 'delete') {
@@ -1046,20 +942,42 @@ class PortalSettingsController extends AbstractController
      */
     public function announcements(Portal $portal, Request $request, EntityManagerInterface $entityManager)
     {
-        $form = $this->createForm(AnnouncementsType::class, $portal);
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
+        $portalForm = $this->createForm(PortalAnnouncementsType::class, $portal);
+        $portalForm->handleRequest($request);
+        if ($portalForm->isSubmitted() && $portalForm->isValid()) {
             $entityManager->persist($portal);
             $entityManager->flush();
+
+            return $this->redirectToRoute('app_portalsettings_announcements', [
+                'portalId' => $portal->getId(),
+                'tab' => 'portal',
+            ]);
+        }
+
+        $server = $entityManager->getRepository(Server::class)->getServer();
+        $serverForm = $this->createForm(ServerAnnouncementsType::class, $server);
+        if ($this->isGranted('ROOT')) {
+            $serverForm->handleRequest($request);
+            if ($serverForm->isSubmitted() && $serverForm->isValid()) {
+                $entityManager->persist($server);
+                $entityManager->flush();
+
+                return $this->redirectToRoute('app_portalsettings_announcements', [
+                    'portalId' => $portal->getId(),
+                    'tab' => 'server',
+                ]);
+            }
         }
 
         return [
-            'form' => $form->createView(),
+            'portalForm' => $portalForm->createView(),
+            'serverForm' => $serverForm->createView(),
+            'tab' => $request->query->has('tab') ? $request->query->get('tab') : 'portal',
         ];
     }
 
     /**
-     * @Route("/portal/{portalId}/settings/terms")
+     * @Route("/portal/{portalId}/settings/contents")
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
@@ -1067,23 +985,77 @@ class PortalSettingsController extends AbstractController
      * @param Request $request
      * @param EntityManagerInterface $entityManager
      */
-    public function terms(Portal $portal, Request $request, EntityManagerInterface $entityManager)
+    public function contents(Portal $portal, Request $request, EntityManagerInterface $entityManager)
     {
-        $form = $this->createForm(TermsType::class, $portal);
+        $termsForm = $this->createForm(TermsType::class, $portal);
+        $termsForm->handleRequest($request);
+        if ($termsForm->isSubmitted() && $termsForm->isValid()) {
 
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-
-            if ($form->getClickedButton()->getName() === 'save') {
+            if ($termsForm->getClickedButton()->getName() === 'save') {
                 $portal->setAGBChangeDate(new \DateTime());
                 $entityManager->persist($portal);
                 $entityManager->flush();
+
+                return $this->redirectToRoute('app_portalsettings_contents', [
+                    'portalId' => $portal->getId(),
+                    'tab' => 'tou',
+                ]);
             }
         }
 
+        $server = $entityManager->getRepository(Server::class)->getServer();
+        $dataPrivacyForm = $this->createForm(DataPrivacyType::class, $server);
+        $impressumForm = $this->createForm(ImpressumType::class, $server);
+        $accessibilityForm = $this->createForm(AccessibilityType::class, $server);
+        if ($this->isGranted('ROOT')) {
+            $dataPrivacyForm->handleRequest($request);
+            if ($dataPrivacyForm->isSubmitted() && $dataPrivacyForm->isValid()) {
+                if ($dataPrivacyForm->getClickedButton()->getName() === 'save') {
+                    $entityManager->persist($server);
+                    $entityManager->flush();
+
+                    return $this->redirectToRoute('app_portalsettings_contents', [
+                        'portalId' => $portal->getId(),
+                        'tab' => 'data_privacy',
+                    ]);
+                }
+            }
+
+            $impressumForm->handleRequest($request);
+            if ($impressumForm->isSubmitted() && $impressumForm->isValid()) {
+                if ($impressumForm->getClickedButton()->getName() === 'save') {
+                    $entityManager->persist($server);
+                    $entityManager->flush();
+
+                    return $this->redirectToRoute('app_portalsettings_contents', [
+                        'portalId' => $portal->getId(),
+                        'tab' => 'impressum',
+                    ]);
+                }
+            }
+
+            $accessibilityForm->handleRequest($request);
+            if ($accessibilityForm->isSubmitted() && $accessibilityForm->isValid()) {
+                if ($accessibilityForm->getClickedButton()->getName() === 'save') {
+                    $entityManager->persist($server);
+                    $entityManager->flush();
+
+                    return $this->redirectToRoute('app_portalsettings_contents', [
+                        'portalId' => $portal->getId(),
+                        'tab' => 'accessibility',
+                    ]);
+                }
+            }
+        }
+
+
         return [
-            'form' => $form->createView(),
+            'termsForm' => $termsForm->createView(),
+            'dataPrivacyForm' => $dataPrivacyForm->createView(),
+            'impressumForm' => $impressumForm->createView(),
+            'accessibilityForm' => $accessibilityForm->createView(),
             'portal' => $portal,
+            'tab' => $request->query->has('tab') ? $request->query->get('tab') : 'portal',
         ];
     }
 
@@ -1102,8 +1074,7 @@ class PortalSettingsController extends AbstractController
         LegacyEnvironment $environment,
         \Swift_Mailer $mailer,
         PaginatorInterface $paginator
-    )
-    {
+    ) {
 
         $user = $userService->getUser($userId);
 
@@ -1126,10 +1097,12 @@ class PortalSettingsController extends AbstractController
                     'portalId' => $portalId,
                     'recipients' => implode(", ", $IdsMailRecipients),
                 ]);
-            } else if ($form->get('cancel')->isClicked()) {
-                return $this->redirectToRoute('app_portalsettings_accountindex', [
-                    'portalId' => $portalId,
-                ]);
+            } else {
+                if ($form->get('cancel')->isClicked()) {
+                    return $this->redirectToRoute('app_portalsettings_accountindex', [
+                        'portalId' => $portalId,
+                    ]);
+                }
             }
         }
 
@@ -1155,14 +1128,15 @@ class PortalSettingsController extends AbstractController
         Request $request,
         LegacyEnvironment $environment,
         \Swift_Mailer $mailer,
-        PaginatorInterface $paginator)
-    {
+        PaginatorInterface $paginator
+    ) {
         $user = $userService->getCurrentUserItem();
         $portalUsers = $userService->getListUsers($portal->getId());
         $userList = [];
         $alreadyIncludedUserIDs = [];
         foreach ($portalUsers as $portalUser) {
-            if (!in_array($portalUser->getUserID(), $alreadyIncludedUserIDs) and $portalUser->getContextID() == $portalId) {
+            if (!in_array($portalUser->getUserID(),
+                    $alreadyIncludedUserIDs) and $portalUser->getContextID() == $portalId) {
                 $userList[] = $portalUser;
                 $alreadyIncludedUserIDs[] = $portalUser->getUserID();
             }
@@ -1202,24 +1176,31 @@ class PortalSettingsController extends AbstractController
 
                 if (empty($searchParam)) {
                     foreach ($tempUserList as $singleUser) {
-                        if ($this->meetsFilterChoiceCriteria($data->getUserIndexFilterChoice(), $singleUser, $portal, $environment)) {
+                        if ($this->meetsFilterChoiceCriteria($data->getUserIndexFilterChoice(), $singleUser, $portal,
+                            $environment)) {
                             $userList[] = $singleUser; //remove users not fitting the search string
                         }
                     }
                 } else {
                     foreach ($tempUserList as $singleUser) {
 
-                        $machtesUserIdLowercased = (strpos(strtolower($singleUser->getUserID()), strtolower($searchParam)) !== false);
-                        $machtesUserNameLowercased = (strpos(strtolower($singleUser->getFullName()), strtolower($searchParam)) !== false);
-                        $matchesFirstNameLowercased = (strpos(strtolower($singleUser->getFirstName()), strtolower($searchParam)) !== false);
-                        $matchesLastNameLowercased = (strpos(strtolower($singleUser->getLastName()), strtolower($searchParam)) !== false);
-                        $matchMailLowercased = (strpos(strtolower($singleUser->getEmail()), strtolower($searchParam)) !== false);
+                        $machtesUserIdLowercased = (strpos(strtolower($singleUser->getUserID()),
+                                strtolower($searchParam)) !== false);
+                        $machtesUserNameLowercased = (strpos(strtolower($singleUser->getFullName()),
+                                strtolower($searchParam)) !== false);
+                        $matchesFirstNameLowercased = (strpos(strtolower($singleUser->getFirstName()),
+                                strtolower($searchParam)) !== false);
+                        $matchesLastNameLowercased = (strpos(strtolower($singleUser->getLastName()),
+                                strtolower($searchParam)) !== false);
+                        $matchMailLowercased = (strpos(strtolower($singleUser->getEmail()),
+                                strtolower($searchParam)) !== false);
 
                         if (($matchesLastNameLowercased
                                 or $machtesUserIdLowercased
                                 or $matchesFirstNameLowercased
                                 or $machtesUserNameLowercased
-                                or $matchMailLowercased) and $this->meetsFilterChoiceCriteria($data->getUserIndexFilterChoice(), $singleUser, $portal, $environment)) {
+                                or $matchMailLowercased) and $this->meetsFilterChoiceCriteria($data->getUserIndexFilterChoice(),
+                                $singleUser, $portal, $environment)) {
                             $userList[] = $singleUser; //remove users not fitting the search string
                         }
                     }
@@ -1262,7 +1243,8 @@ class PortalSettingsController extends AbstractController
                                 break;
                             }
                         }
-                        $this->sendUserInfoMail($IdsMailRecipients, 'user-delete', $user, $mailer, $userService, $environment);
+                        $this->sendUserInfoMail($IdsMailRecipients, 'user-delete', $user, $mailer, $userService,
+                            $environment);
                         break;
                     case 2: // user-block
                         $IdsMailRecipients = [];
@@ -1274,7 +1256,8 @@ class PortalSettingsController extends AbstractController
                                 $user->save();
                             }
                         }
-                        $this->sendUserInfoMail($IdsMailRecipients, 'user-block', $user, $mailer, $userService, $environment);
+                        $this->sendUserInfoMail($IdsMailRecipients, 'user-block', $user, $mailer, $userService,
+                            $environment);
                         break;
                     case 3: // user-confirm
                         $IdsMailRecipients = [];
@@ -1286,7 +1269,8 @@ class PortalSettingsController extends AbstractController
                                 $user->save();
                             }
                         }
-                        $this->sendUserInfoMail($IdsMailRecipients, 'user-confirm', $user, $mailer, $userService, $environment);
+                        $this->sendUserInfoMail($IdsMailRecipients, 'user-confirm', $user, $mailer, $userService,
+                            $environment);
                         break;
                     case 4: // change user mail the next time he/she logs in
                         foreach ($ids as $id => $checked) {
@@ -1316,7 +1300,8 @@ class PortalSettingsController extends AbstractController
                                 $user->save();
                             }
                         }
-                        $this->sendUserInfoMail($IdsMailRecipients, 'user-status-user', $user, $mailer, $userService, $environment);
+                        $this->sendUserInfoMail($IdsMailRecipients, 'user-status-user', $user, $mailer, $userService,
+                            $environment);
                         break;
                     case 6: // user-status-moderator
                         $IdsMailRecipients = [];
@@ -1328,7 +1313,8 @@ class PortalSettingsController extends AbstractController
                                 $user->save();
                             }
                         }
-                        $this->sendUserInfoMail($IdsMailRecipients, 'user-status-moderator', $user, $mailer, $userService, $environment);
+                        $this->sendUserInfoMail($IdsMailRecipients, 'user-status-moderator', $user, $mailer,
+                            $userService, $environment);
                         break;
                     case 7: //user-contact
                         $IdsMailRecipients = [];
@@ -1340,7 +1326,8 @@ class PortalSettingsController extends AbstractController
                                 $user->save();
                             }
                         }
-                        $this->sendUserInfoMail($IdsMailRecipients, 'user-contact', $user, $mailer, $userService, $environment);
+                        $this->sendUserInfoMail($IdsMailRecipients, 'user-contact', $user, $mailer, $userService,
+                            $environment);
                         break;
                     case 8: // user-contact-remove
                         $IdsMailRecipients = [];
@@ -1352,7 +1339,8 @@ class PortalSettingsController extends AbstractController
                                 $user->save();
                             }
                         }
-                        $this->sendUserInfoMail($IdsMailRecipients, 'user-contact-remove', $user, $mailer, $userService, $environment);
+                        $this->sendUserInfoMail($IdsMailRecipients, 'user-contact-remove', $user, $mailer, $userService,
+                            $environment);
                         break;
                     case 9: // send mail
                         $IdsMailRecipients = [];
@@ -1605,8 +1593,7 @@ class PortalSettingsController extends AbstractController
         ItemService $itemService,
         \Swift_Mailer $mailer,
         Portal $portal
-    )
-    {
+    ) {
         $user = $userService->getCurrentUserItem();
         $recipientArray = [];
         $recipients = explode(', ', $recipients);
@@ -1682,8 +1669,7 @@ class PortalSettingsController extends AbstractController
         UserTransformer $userTransformer,
         ItemService $itemService,
         \Swift_Mailer $mailer
-    )
-    {
+    ) {
         $recipientArray = [];
         $recipients = explode(', ', $recipients);
         foreach ($recipients as $recipient) {
@@ -1765,8 +1751,7 @@ class PortalSettingsController extends AbstractController
         UserTransformer $userTransformer,
         ItemService $itemService,
         \Swift_Mailer $mailer
-    )
-    {
+    ) {
         $recipientArray = [];
         $recipients = explode(', ', $recipients);
         foreach ($recipients as $recipient) {
@@ -1843,8 +1828,8 @@ class PortalSettingsController extends AbstractController
         Request $request,
         UserService $userService,
         LegacyEnvironment $legacyEnvironment,
-        RoomService $roomService)
-    {
+        RoomService $roomService
+    ) {
         $userList = $userService->getListUsers($portal->getId());
         $form = $this->createForm(AccountIndexDetailType::class, $portal);
         $form->handleRequest($request);
@@ -1980,8 +1965,12 @@ class PortalSettingsController extends AbstractController
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
      */
-    public function accountIndexDetailEdit(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    public function accountIndexDetailEdit(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
 
         $environment = $legacyEnvironment->getEnvironment();
 
@@ -2110,8 +2099,13 @@ class PortalSettingsController extends AbstractController
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
      */
-    public function accountIndexDetailChangeStatus(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment, TranslatorInterface $translator)
-    {
+    public function accountIndexDetailChangeStatus(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment,
+        TranslatorInterface $translator
+    ) {
         $user = $userService->getUser($request->get('userId'));
         $userChangeStatus = new PortalUserChangeStatus();
         $userChangeStatus->setName($user->getFullName());
@@ -2198,8 +2192,12 @@ class PortalSettingsController extends AbstractController
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      */
-    public function accountIndexDetailHideMail(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    public function accountIndexDetailHideMail(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
         $user = $userService->getUser($request->get('userId'));
         $user->setEmailNotVisible();
         $user->save();
@@ -2222,8 +2220,12 @@ class PortalSettingsController extends AbstractController
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      */
-    public function accountIndexDetailHideMailAllWrks(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    public function accountIndexDetailHideMailAllWrks(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
         $user = $userService->getUser($request->get('userId'));
         $user->setEmailNotVisible();
         $user->save();
@@ -2252,8 +2254,12 @@ class PortalSettingsController extends AbstractController
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      */
-    public function accountIndexDetailShowMail(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    public function accountIndexDetailShowMail(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
         $user = $userService->getUser($request->get('userId'));
         $user->setEmailVisible();
         $user->save();
@@ -2276,8 +2282,12 @@ class PortalSettingsController extends AbstractController
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      */
-    public function accountIndexDetailShowMailAllWroks(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    public function accountIndexDetailShowMailAllWroks(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
         $user = $userService->getUser($request->get('userId'));
         $user->setEmailVisible();
         $user->save();
@@ -2307,8 +2317,12 @@ class PortalSettingsController extends AbstractController
      * @ParamConverter("portal", class="App\Entity\Portal", options={"id" = "portalId"})
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      */
-    public function accountIndexDetailTakeOver(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    public function accountIndexDetailTakeOver(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
         $session = $this->get('session');
         $user = $userService->getUser($request->get('userId'));
         $user_item = $user;
@@ -2319,7 +2333,7 @@ class PortalSettingsController extends AbstractController
         $sessionManager = $legacyEnvironment->getSessionManager();
         $sessionItem = $legacyEnvironment->getSessionItem();
 
-        If (!is_null($sessionItem)) {
+        if (!is_null($sessionItem)) {
             $sessionManager->delete($sessionItem->getSessionID());
             $legacyEnvironment->setSessionItem(null);
 
@@ -2386,8 +2400,12 @@ class PortalSettingsController extends AbstractController
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
      */
-    public function accountIndexDetailAssignWorkspace(Portal $portal, Request $request, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    public function accountIndexDetailAssignWorkspace(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
         $user = $userService->getUser($request->get('userId'));
         $userAssignWorkspace = new PortalUserAssignWorkspace();
         $userAssignWorkspace->setUserID($user->getUserID());
@@ -2448,7 +2466,8 @@ class PortalSettingsController extends AbstractController
                 $form = $this->createForm(AccountIndexDetailAssignWorkspaceType::class, $userAssignWorkspace);
 
                 $projectRoomManager = $legacyEnvironment->getEnvironment()->getProjectManager();
-                $projectRooms = $projectRoomManager->getRoomsByTitle($formData->getSearchForWorkspace(), $portal->getId());
+                $projectRooms = $projectRoomManager->getRoomsByTitle($formData->getSearchForWorkspace(),
+                    $portal->getId());
 
                 if ($projectRooms->getCount() < 1) {
                     $repository = $this->getDoctrine()->getRepository(Room::class);
@@ -2494,13 +2513,14 @@ class PortalSettingsController extends AbstractController
      * @IsGranted("PORTAL_MODERATOR", subject="portal")
      * @Template()
      */
-    public function accountIndexDetailChangePassword(Portal $portal,
-                                                     Request $request,
-                                                     UserService $userService,
-                                                     LegacyEnvironment $legacyEnvironment,
-                                                     UserPasswordEncoderInterface $passwordEncoder,
-                                                     EntityManagerInterface $entityManager)
-    {
+    public function accountIndexDetailChangePassword(
+        Portal $portal,
+        Request $request,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment,
+        UserPasswordEncoderInterface $passwordEncoder,
+        EntityManagerInterface $entityManager
+    ) {
         $user = $userService->getUser($request->get('userId'));
         $form_data = ['userName' => $user->getFullName(), 'userId' => $user->getUserID()];
         $form = $this->createForm(AccountIndexDetailChangePasswordType::class, $form_data);
@@ -2512,13 +2532,14 @@ class PortalSettingsController extends AbstractController
             $data = $form->getData();
             $submittedPassword = $data['password'];
 
-            $userPwUpdate = $accountRepo->findOneByCredentialsShort($user->getUserID(),
-                $user->getContextID());
-            $userPwUpdate->setPasswordMd5(null);
-            $userPwUpdate->setPassword($passwordEncoder->encodePassword($userPwUpdate, $submittedPassword));
-
-            $entityManager->persist($userPwUpdate);
-            $entityManager->flush();
+            // TODO: THIS IS WRONG
+//            $userPwUpdate = $accountRepo->findOneByCredentialsShort($user->getUserID(),
+//                $user->getContextID());
+//            $userPwUpdate->setPasswordMd5(null);
+//            $userPwUpdate->setPassword($passwordEncoder->encodePassword($userPwUpdate, $submittedPassword));
+//
+//            $entityManager->persist($userPwUpdate);
+//            $entityManager->flush();
         }
 
         return [
@@ -2544,8 +2565,7 @@ class PortalSettingsController extends AbstractController
         $translationId,
         Request $request,
         EntityManagerInterface $entityManager
-    )
-    {
+    ) {
         $editForm = null;
 
         $repository = $entityManager->getRepository(Translation::class);
@@ -2583,8 +2603,14 @@ class PortalSettingsController extends AbstractController
         ];
     }
 
-    private function sendUserInfoMail($userIds, $action, \cs_user_item $user, \Swift_Mailer $mailer, UserService $userService, LegacyEnvironment $legacyEnvironment)
-    {
+    private function sendUserInfoMail(
+        $userIds,
+        $action,
+        \cs_user_item $user,
+        \Swift_Mailer $mailer,
+        UserService $userService,
+        LegacyEnvironment $legacyEnvironment
+    ) {
         $fromAddress = $user->getEmail();
         $currentUser = $user;
         $fromSender = $user->getFullName();
@@ -2722,38 +2748,45 @@ class PortalSettingsController extends AbstractController
 
         switch ($action) {
             case 'user-delete':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_DELETE', $user->getUserID(), $room->getTitle());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_DELETE', $user->getUserID(),
+                    $room->getTitle());
 
                 break;
 
             case 'user-block':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_LOCK', $user->getUserID(), $room->getTitle());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_LOCK', $user->getUserID(),
+                    $room->getTitle());
 
                 break;
 
             case 'user-confirm':
             case 'user-status-user':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_STATUS_USER', $user->getUserID(), $room->getTitle());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_STATUS_USER', $user->getUserID(),
+                    $room->getTitle());
 
                 break;
 
             case 'user-status-moderator':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_STATUS_MODERATOR', $user->getUserID(), $room->getTitle());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_STATUS_MODERATOR', $user->getUserID(),
+                    $room->getTitle());
 
                 break;
 
             case 'user-status-reading-user':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_STATUS_USER_READ_ONLY', $user->getUserID(), $room->getTitle());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_STATUS_USER_READ_ONLY', $user->getUserID(),
+                    $room->getTitle());
 
                 break;
 
             case 'user-contact':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_MAKE_CONTACT_PERSON', $user->getUserID(), $room->getTitle());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_MAKE_CONTACT_PERSON', $user->getUserID(),
+                    $room->getTitle());
 
                 break;
 
             case 'user-contact-remove':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_UNMAKE_CONTACT_PERSON', $user->getUserID(), $room->getTitle());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_UNMAKE_CONTACT_PERSON', $user->getUserID(),
+                    $room->getTitle());
 
                 break;
             case 'user-account-merge':
@@ -2764,12 +2797,14 @@ class PortalSettingsController extends AbstractController
                         array_push($sameIDsPerRoom, $relatedUser->getUserID());
                     }
                 }
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_MERGE_PO', $user->getEmail(), $room->getTitle(), implode(", ", $sameIDsPerRoom));
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_MERGE_PO', $user->getEmail(),
+                    $room->getTitle(), implode(", ", $sameIDsPerRoom));
 
                 break;
 
             case 'user-account_password':
-                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_PASSWORD_PO', $room->getTitle(), $user->getUserID());
+                $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_USER_ACCOUNT_PASSWORD_PO', $room->getTitle(),
+                    $user->getUserID());
 
                 break;
 
@@ -2785,5 +2820,24 @@ class PortalSettingsController extends AbstractController
         $body .= $legacyTranslator->getEmailMessage('MAIL_BODY_CIAO', $moderator->getFullname(), $room->getTitle());
 
         return $body;
+    }
+
+    private function generateRedirectForAuthType(string $type, Portal $portal)
+    {
+        switch ($type) {
+            case 'ldap':
+                return $this->redirectToRoute('app_portalsettings_authldap', [
+                    'portalId' => $portal->getId(),
+                ]);
+            case 'shib':
+                return $this->redirectToRoute('app_portalsettings_authshibboleth', [
+                    'portalId' => $portal->getId(),
+                ]);
+            default:
+            case 'commsy':
+                return $this->redirectToRoute('app_portalsettings_authlocal', [
+                    'portalId' => $portal->getId(),
+                ]);
+        }
     }
 }

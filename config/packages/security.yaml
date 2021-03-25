@@ -52,10 +52,12 @@ security:
             anonymous: true
             logout:
                 path: app_logout
+                success_handler: App\Security\LogoutSuccessHandler
             guard:
                 authenticators:
                     - App\Security\LoginFormAuthenticator
                     - App\Security\LdapAuthenticator
+                    - App\Security\ShibbolethAuthenticator
                 entry_point: App\Security\LoginFormAuthenticator
                 provider: commsy_user_provider
 

@@ -216,7 +216,7 @@ class cs_user_item extends cs_item
      */
     public function getLinkedUserroomItem(): ?\cs_userroom_item
     {
-        if (isset($this->_userroomItem)) {
+        if (isset($this->_userroomItem) && !$this->_userroomItem->isDeleted()) {
             return $this->_userroomItem;
         }
 
@@ -1374,6 +1374,10 @@ class cs_user_item extends cs_item
         if (empty($item_id)) {
             $this->setItemID($user_manager->getCreateID());
         }
+
+        // NOTE: media upload in a user item's description field is currently disabled
+        // $this->_saveFiles();     // this must be done before saveFileLinks
+        // $this->_saveFileLinks(); // this must be done after saving so we can be sure to have an item id
 
         plugin_hook('user_save', $this);
 
@@ -3133,11 +3137,6 @@ class cs_user_item extends cs_item
             }
         } else {
             global $symfonyContainer;
-
-            /** @var EntityManagerInterface $entityManager */
-            $entityManager = $symfonyContainer->get('doctrine.orm.entity_manager');
-            $authSourceRepository = $entityManager->getRepository(AuthSource::class);
-
             $tokenStorage = $symfonyContainer->get('security.token_storage');
             /** @var Account $user */
             $user = $tokenStorage->getToken()->getUser();

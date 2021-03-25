@@ -236,7 +236,7 @@ class UserController extends BaseController
             // set filter conditions in user manager
             $this->userService->setFilterConditions($filterForm);
         } else {
-            $this->userService->showNoNotActivatedEntries();
+            $this->userService->hideDeactivatedEntries();
             $this->userService->showUserStatus(8);
         }
 
@@ -1288,7 +1288,8 @@ class UserController extends BaseController
         $contextId,
         LegacyEnvironment $legacyEnvironment,
         SessionInterface $session,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        bool $uikit3 = false
     ) {
         $currentUserItem = $this->userService->getCurrentUserItem();
         $privateRoomItem = $currentUserItem->getOwnRoom();
@@ -1324,6 +1325,7 @@ class UserController extends BaseController
             'tooltip' => $portalItem ? $portalItem->getSupportPageLinkTooltip() : '',
             'showPortalConfigurationLink' => $showPortalConfigurationLink,
             'portal' => $portalItem,
+            'uikit3' => $uikit3,
         ];
     }
 
@@ -1506,7 +1508,7 @@ class UserController extends BaseController
             // set filter conditions in user manager
             $this->userService->setFilterConditions($filterForm);
         } else {
-            $this->userService->showNoNotActivatedEntries();
+            $this->userService->hideDeactivatedEntries();
             $this->userService->showUserStatus(8);
         }
 
@@ -1866,7 +1868,7 @@ class UserController extends BaseController
                 // apply filter
                 $this->userService->setFilterConditions($filterForm);
             } else {
-                $this->userService->showNoNotActivatedEntries();
+                $this->userService->hideDeactivatedEntries();
                 $this->userService->showUserStatus(8);
             }
 

@@ -169,7 +169,7 @@ class MaterialController extends BaseController
             // set filter conditions in material manager
             $materialService->setFilterConditions($filterForm);
         } else {
-            $materialService->showNoNotActivatedEntries();
+            $materialService->hideDeactivatedEntries();
         }
 
         // get material list from manager service 
@@ -248,7 +248,7 @@ class MaterialController extends BaseController
             // set filter conditions in material manager
             $materialService->setFilterConditions($filterForm);
         } else {
-            $materialService->showNoNotActivatedEntries();
+            $materialService->hideDeactivatedEntries();
         }
 
         // get material list from manager service 
@@ -1724,7 +1724,7 @@ class MaterialController extends BaseController
     ) {
         // setup filter form default values
         $defaultFilterValues = [
-            'hide-deactivated-entries' => true,
+            'hide-deactivated-entries' => 'only_activated',
         ];
 
         return $this->createForm(MaterialFilterType::class, $defaultFilterValues, [
