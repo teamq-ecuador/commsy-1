@@ -25,11 +25,12 @@ use App\Search\QueryConditions\RoomQueryCondition;
 use App\Search\QueryConditions\TitleQueryCondition;
 use App\Search\SearchManager;
 use App\Services\LegacyEnvironment;
+use App\Utils\ItemService;
 use App\Utils\ReaderService;
 use App\Utils\RoomService;
-use Doctrine\ORM\EntityManagerInterface;
 use cs_item;
 use cs_room_item;
+use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use FOS\ElasticaBundle\Paginator\TransformedPaginatorAdapter;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Security;
@@ -58,8 +59,6 @@ class SearchController extends BaseController
     /**
      * SearchController constructor.
      * @param RoomService $roomService
-     * @param ItemService $itemService
-     * @param TranslatorInterface $translator
      * @param UrlGeneratorInterface $router
      */
     public function __construct(RoomService $roomService, UrlGeneratorInterface $router)
@@ -82,7 +81,8 @@ class SearchController extends BaseController
     public function searchFormAction(
         int $roomId,
         $requestData
-    ) {
+    )
+    {
         $searchData = new SearchData();
         $searchData->setPhrase($requestData['phrase'] ?? null);
 
@@ -109,7 +109,8 @@ class SearchController extends BaseController
      */
     public function itemSearchFormAction(
         int $roomId
-    ) {
+    )
+    {
         $form = $this->createForm(SearchItemType::class, [], [
             'action' => $this->generateUrl('app_search_results', [
                 'roomId' => $roomId
@@ -134,7 +135,8 @@ class SearchController extends BaseController
         SearchManager $searchManager,
         ReaderService $readerService,
         int $roomId
-    ) {
+    )
+    {
         $query = $request->get('search', '');
 
         // query conditions
@@ -150,7 +152,7 @@ class SearchController extends BaseController
         $searchManager->addFilterCondition($singleFilterCondition);
 
         $searchResults = $searchManager->getLinkedItemResults();
-        $results = $this->prepareResults($searchResults, $roomId, $readerService, 0, true);
+        $results = $this->prepareResults($searchResults,  $readerService, $roomId, 0, true);
 
         $response = new JsonResponse();
 
@@ -171,7 +173,8 @@ class SearchController extends BaseController
         SearchManager $searchManager,
         ReaderService $readerService,
         int $roomId
-    ) {
+    )
+    {
         $query = $request->get('search', '');
 
         // query conditions
@@ -187,7 +190,7 @@ class SearchController extends BaseController
         $searchManager->addFilterCondition($singleFilterCondition);
 
         $searchResults = $searchManager->getResults();
-        $results = $this->prepareResults($searchResults, $roomId, $readerService, 0, true);
+        $results = $this->prepareResults($searchResults, $readerService, $roomId, 0, true);
 
         $response = new JsonResponse();
 
@@ -222,7 +225,8 @@ class SearchController extends BaseController
         TranslatorInterface $translator,
         ReaderService $readerService,
         int $roomId
-    ) {
+    )
+    {
         $roomItem = $roomService->getRoomItem($roomId);
         $currentUser = $legacyEnvironment->getEnvironment()->getCurrentUserItem();
 
@@ -244,7 +248,7 @@ class SearchController extends BaseController
         // honor any sort arguments from the query URL
         $sortBy = $searchData->getSortBy();
         $sortOrder = $searchData->getSortOrder();
-        $sortArguments = !empty($sortBy) && !empty($sortOrder) ? [$sortBy => $sortOrder] : [] ;
+        $sortArguments = !empty($sortBy) && !empty($sortOrder) ? [$sortBy => $sortOrder] : [];
 
         /**
          * Before we build the SearchFilterType form we need to get the current aggregations from ElasticSearch
@@ -442,7 +446,8 @@ class SearchController extends BaseController
         int $roomId,
         int $start = 0,
         $sort = ''
-    ) {
+    )
+    {
         // NOTE: to have the "load more" functionality work with any applied filters, we also need to add all
         //       SearchFilterType form fields to the "load more" query dictionary in results.html.twig
 
@@ -475,7 +480,7 @@ class SearchController extends BaseController
         // otherwise honor any pre-existing sortBy/sortOrder URL params
         $sortBy = $searchData->getSortBy();
         $sortOrder = $searchData->getSortOrder();
-        $sortArguments = !empty($sortBy) && !empty($sortOrder) ? [$sortBy => $sortOrder] : [] ;
+        $sortArguments = !empty($sortBy) && !empty($sortOrder) ? [$sortBy => $sortOrder] : [];
 
         $this->setupSearchQueryConditions($searchManager, $searchData);
         $this->setupSearchFilterConditions($searchManager, $searchData, $roomId, $multipleContextFilterCondition, $readStatusFilterCondition);
@@ -528,7 +533,8 @@ class SearchController extends BaseController
         SearchData $searchData,
         Request $request,
         \cs_user_item $currentUser
-    ): SearchData {
+    ): SearchData
+    {
         // TODO: should we better move this method to SearchData.php?
 
         if (!$request || !$currentUser) {
@@ -788,7 +794,8 @@ class SearchController extends BaseController
         SearchManager $searchManager,
         RouterInterface $router,
         TranslatorInterface $translator
-    ) {
+    )
+    {
         $results = [];
 
         $query = $request->get('search', '');
@@ -872,7 +879,8 @@ class SearchController extends BaseController
     public function xhrCopyAction(
         Request $request,
         int $roomId
-    ) {
+    )
+    {
         $room = $this->getRoom($roomId);
         $items = $this->getItemsForActionRequest($room, $request);
 
@@ -890,7 +898,8 @@ class SearchController extends BaseController
     public function xhrDeleteAction(
         Request $request,
         int $roomId
-    ) {
+    )
+    {
         $room = $this->getRoom($roomId);
         $items = $this->getItemsForActionRequest($room, $request);
 
@@ -911,7 +920,8 @@ class SearchController extends BaseController
         $roomItem,
         $selectAll,
         $itemIds = []
-    ) {
+    )
+    {
         if ($selectAll) {
             // TODO: This is currently a limitation
             return [];
@@ -934,8 +944,8 @@ class SearchController extends BaseController
         int $currentRoomId,
         int $offset = 0,
         bool $json = false
-    ) {
-        $itemService = $this->get('commsy_legacy.item_service');
+    )
+    {
 
         $results = [];
         foreach ($searchResults->getResults($offset, 10)->toArray() as $searchResult) {
@@ -948,9 +958,6 @@ class SearchController extends BaseController
             }
 
             if ($json) {
-                $translator = $this->get('translator');
-                $router = $this->container->get('router');
-
                 // construct target url
                 $url = '#';
 
@@ -962,7 +969,7 @@ class SearchController extends BaseController
                 }
 
                 $routeName = 'app_' . $type . '_detail';
-                if ($router->getRouteCollection()->get($routeName)) {
+                if ($this->router->getRouteCollection()->get($routeName)) {
                     $url = $this->generateUrl($routeName, [
                         'roomId' => $roomId,
                         'itemId' => $searchResult->getItemId(),
@@ -981,7 +988,7 @@ class SearchController extends BaseController
 
                 $results[] = [
                     'title' => $title,
-                    'text' => $translator->transChoice(ucfirst($type), 0, [], 'rubric'),
+                    'text' => $this->translator->trans(ucfirst($type), ['count' => 0], 'rubric'),
                     'url' => $url,
                     'value' => $searchResult->getItemId(),
                 ];
@@ -1005,7 +1012,7 @@ class SearchController extends BaseController
                     'allowedActions' => $allowedActions,
                     'entity' => $searchResult,
                     'routeName' => 'app_' . $type . '_detail',
-                    'files' => $itemService->getItemFileList($searchResult->getItemId()),
+                    'files' => $this->itemService->getItemFileList($searchResult->getItemId()),
                     'type' => $type,
                     'status' => $status,
                     'readStatus' => $readStatus,
