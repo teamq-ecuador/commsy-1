@@ -38,6 +38,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -48,6 +49,25 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 class SearchController extends BaseController
 {
+
+    /**
+     * @var UrlGeneratorInterface
+     */
+    private $router;
+
+    /**
+     * SearchController constructor.
+     * @param RoomService $roomService
+     * @param ItemService $itemService
+     * @param TranslatorInterface $translator
+     * @param UrlGeneratorInterface $router
+     */
+    public function __construct(RoomService $roomService, UrlGeneratorInterface $router)
+    {
+        parent::__construct($roomService);
+        $this->router = $router;
+    }
+
     /**
      * Generates the search form and search field for embedding them into
      * a template.
@@ -978,7 +998,7 @@ class SearchController extends BaseController
                     $status = $searchResult->getStatus();
                 }
                 if (method_exists($searchResult, 'getItemId')) {
-                    $item = $itemService->getItem($searchResult->getItemId());
+                    $item = $this->itemService->getItem($searchResult->getItemId());
                     $readStatus = $readerService->cachedReadStatusForItem($item);
                 }
                 $results[] = [
